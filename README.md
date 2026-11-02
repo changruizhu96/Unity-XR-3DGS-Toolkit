@@ -32,7 +32,7 @@ Play the video directly above. The recording shows the MR-Compare research appli
 | --- | --- |
 | Import and render 3DGS assets in Unity XR | Keep the complete Unity XR rendering workflow |
 | Place splats in VR scenes and application logic | Register 3DGS or meshes to the physical environment |
-| View and interact with splats through an XR camera | Use Effect Mesh or Environment Depth as registration targets |
+| View and interact with splats through an XR camera | Use depth scans or Quest's built-in environment setup as registration targets |
 | Use the project without physical-world registration | Persist alignment with Quest coordinates or spatial anchors |
 | Build custom VR interactions around `GaussianSplatRenderer` | Compare registered content with passthrough using Mini-Window, 3D Slider, or Switch-back |
 
@@ -48,9 +48,9 @@ Play the video directly above. The recording shows the MR-Compare research appli
 ### Extending 3DGS into mixed reality
 
 - Source-point extraction from 3DGS centres or Unity meshes.
-- Physical-environment targets from Effect Mesh, reusable Environment Depth pre-scans, real-time scans, or legacy room meshes.
+- Three ways to capture the physical target: reusable depth pre-scans, real-time depth scanning, or Quest's built-in environment setup.
 - FPFH/TEASER++ coarse registration followed by GICP or VGICP refinement.
-- Alignment save/load support using spatial anchors, room meshes, or the current Effect Mesh.
+- Alignment save/load support using spatial anchors or the headset's scene mesh.
 - Mini-Window, 3D Slider, and Switch-back interaction modes for comparing reconstructions with live passthrough.
 
 ## Get the Project
@@ -84,7 +84,13 @@ Open the repository root in Unity `6000.0.76f1`, let the package manager restore
 
 ### Option B — Register 3DGS to the physical world in MR
 
-**Metric scale is essential for MR registration:** the reconstructed scene must match the physical environment's real-world dimensions, as well as its position and orientation. Quest depth scans provide a metric target, while an imported reconstruction may use arbitrary units. Preparing the source at metric scale is preferable; if it is not metric, enable scale estimation as described in the third route below. The following routes cover source preparation and scale handling.
+**Metric scale is essential for MR registration:** the reconstructed scene must match the physical environment's real-world dimensions, as well as its position and orientation. Quest depth scans provide a metric target, while an imported reconstruction may use arbitrary units. Preparing the source at metric scale is preferable; for a non-metric source, use the scale-estimation workflow in step 2 below.
+
+**Choose one of three ways to capture your physical target:**
+
+- **Depth pre-scan:** use the toolkit's scanner to capture and save a target point cloud, then reuse it in a later alignment session.
+- **Real-time depth scan and align:** capture target points and align the reconstruction in the same scene and session.
+- **Quest 3 built-in environment setup:** complete `Settings > Environment Setup > Space Setup` directly on the headset. Quest assists with scanning the room, and the toolkit uses the resulting scene mesh without a separate toolkit depth scan. See [Meta's official assisted Space Setup guide](https://www.meta.com/help/quest/853707093070890/).
 
 1. Follow [Get the Project](#get-the-project), open it in Unity `6000.0.76f1`, and let Unity restore the packages.
 2. Prepare a source scene using one of these routes:
@@ -93,12 +99,12 @@ Open the repository root in Unity `6000.0.76f1`, let the package manager restore
    - **Non-metric end-to-end workflow — e.g. Luma AI:** if the exported reconstruction is not at metric scale, enable `AllInOneRegistration > Estimate Scaling` after importing it. For complete source and target clouds with high overlap, you can also enable `Coarse Scale Alignment` to initialize scale before the first alignment; later realignments skip this initialization. After the initial alignment, inspect the result and press the controller's **Y** button to realign if needed, as described in steps 7–8.
 3. Import the 3DGS asset or mesh into `Assets/Scenes/Alignment Demo.unity`. For 3DGS, create the asset with `Quality` set to `Very High`.
 4. Use `Gaussian Splat Render > Baking & Debug` to remove floaters, skybox points, and unrelated background geometry.
-5. On Quest, complete `Settings > Environment Setup > Space Setup` so the simplest Effect Mesh route has a current global mesh. For higher-fidelity target geometry, use the reusable Pre-Scan / Quest 3 Scanner workflow described below.
+5. Prepare the physical target using one of the three workflows above. For the built-in environment setup route, finish Space Setup on the headset before running the Alignment Demo. For either depth-scan route, follow the corresponding scanner workflow below.
 6. On `AllInOneRegistration`, set `Workflow Mode` to `Align`, choose the target format, and assign the source renderer or mesh plus the required target reference.
 7. Run `Alignment Demo.unity`. The tested defaults use TEASER++ for coarse registration, GICP for refinement, baked source data, and repeated alignment. Registration normally runs once automatically when the source and target are ready. For Real-Time Scan, collect the scan first and press the controller's `Y` button to trigger alignment.
 8. Visually inspect the result. If the first alignment is incorrect, press the controller's `Y` button to realign. Keep `Allow Repeated Alignment` enabled. Each realignment uses the source's current transform and re-estimates alignment; `Estimate Scaling` continues to estimate the remaining scale difference. In current testing, some initially unsuccessful alignments became visually correct after several realignments. This is an observed result, not a guarantee for every scene.
 
-See [Choosing a Registration Target](#choosing-a-registration-target) for the Effect Mesh, Pre-Scan, Real-Time Scan, and legacy Room Mesh tradeoffs.
+See [Choosing a Registration Target](#choosing-a-registration-target) for the Inspector modes corresponding to these workflows and their detailed setup instructions.
 
 ### Visual Comparison Controls
 
@@ -128,7 +134,7 @@ For VR-only development, begin with the renderer and your XR camera/interaction 
 
 ### How MR registration extends the renderer
 
-The MR path extracts registration points from Gaussian centres or mesh geometry, collects target geometry from Effect Mesh or Environment Depth, and estimates an alignment using FPFH/TEASER++ followed by GICP/VGICP. The transform is applied to the rendered source and can be saved relative to Quest scene references or a spatial anchor.
+The MR path extracts registration points from Gaussian centres or mesh geometry, collects target geometry from a depth scan or the headset's environment setup, and estimates an alignment using FPFH/TEASER++ followed by GICP/VGICP. The transform is applied to the rendered source and can be saved relative to Quest scene references or a spatial anchor.
 
 ![MR registration pipeline inherited from MR-Compare: source and target point collection, filtering, coarse registration, fine registration, and XR interaction](docs/workflow.png)
 
@@ -243,7 +249,7 @@ If registration fails, inspect the source and target point clouds first. In most
 
 ## Choosing a Registration Target
 
-The `AllInOneRegistration` component supports several target modes.
+The three target-capture workflows above map to four `Target Format` modes in `AllInOneRegistration`. For the built-in Quest environment setup workflow, `effectMesh` and the legacy `roomMesh` mode serve the same purpose: using the headset's captured scene mesh as the target. They are separate implementation options for current and older Meta scene components, rather than separate capture workflows.
 
 `preScan` and `realTimeScan` use the same underlying target-generation and registration path: the Quest Environment Depth scanner produces a point cloud, which is then aligned with the reconstructed source through the same TEASER/GICP pipeline. The difference is how the workflow is organized. `preScan` saves the scan and anchor for a later alignment session, while `realTimeScan` passes the scanner points directly to alignment in the same scene and session.
 
@@ -253,18 +259,18 @@ New `AllInOneRegistration` components use the tested default profile: `Align`, `
 
 | Target format | Recommended use | Target data | Main tradeoff |
 | --- | --- | --- | --- |
-| `effectMesh` | Fastest setup and first-time use | Quest Space Setup global Effect Mesh | Fewest operations, but target detail and accuracy are limited by the Effect Mesh |
 | `preScan` | Separated, reusable scan/alignment workflow | Environment Depth scanner point cloud loaded with its saved anchor data | Requires a separate scan/save/load stage |
 | `realTimeScan` | Integrated scan/alignment workflow | The same Environment Depth scanner point cloud passed directly from memory | Fewer handoff steps; scanner and 3DGS rendering must be isolated at runtime |
-| `roomMesh` (legacy) | Compatibility with legacy MRUK scenes | Legacy Room Mesh Event | Retained for existing setups; prefer `effectMesh` for new scenes |
+| `effectMesh` | Quest built-in environment setup; recommended for new scenes using this workflow | Global scene mesh exposed through Effect Mesh | No separate toolkit scan; target detail and accuracy depend on the headset's captured mesh |
+| `roomMesh` (legacy) | The same built-in environment setup workflow in older MRUK scenes | Scene mesh exposed through Room Mesh Event | Retained for compatibility; use `effectMesh` for new scenes |
 
 ## Detailed Usage
 
-### Simplest Workflow: Effect Mesh
+### Simplest Workflow: Quest Environment Setup
 
-Use this workflow when you want the fewest setup operations and are comfortable using the Quest's existing scene mesh as the registration reference. It is convenient, but it is not the highest-quality option: registration accuracy is constrained by the accuracy, coverage, and geometric detail of the current effect mesh.
+Use this workflow to capture the room through Quest's own environment setup and use its scene mesh as the registration target. The steps below use the current `effectMesh` mode; `roomMesh` is the legacy implementation of this workflow. Registration accuracy depends on the accuracy, coverage, and geometric detail of the headset's captured mesh.
 
-1. Scan your physical room on Quest through `Settings > Environment Setup > Space Setup`.
+1. Complete `Settings > Environment Setup > Space Setup` directly on the Quest headset, following [Meta's official assisted Space Setup guide](https://www.meta.com/help/quest/853707093070890/).
 2. Open `Assets/Scenes/Alignment Demo.unity`.
 3. Add or enable your reconstructed source object in the scene.
 4. Select the object that contains `AllInOneRegistration`.
@@ -317,7 +323,7 @@ The scanner stores:
 
 ### Real-Time Scan Workflow
 
-This workflow integrates the same Environment Depth scanner and point-cloud registration path used by `preScan` into one scene and session. Instead of saving and reloading the target, it passes the accumulated scanner points directly from memory to alignment. The toolkit suspends 3DGS rendering while scanning and deactivates the scanner before alignment. Prefer **Pre-Scan / Quest 3 Scanner** when you want a reusable saved target or separate scan/alignment stages; use **Effect Mesh** when minimizing setup operations matters more than target fidelity.
+This workflow integrates the same Environment Depth scanner and point-cloud registration path used by `preScan` into one scene and session. Instead of saving and reloading the target, it passes the accumulated scanner points directly from memory to alignment. The toolkit suspends 3DGS rendering while scanning and deactivates the scanner before alignment. Prefer **Pre-Scan / Quest 3 Scanner** when you want a reusable saved target or separate scan/alignment stages; use **Quest Environment Setup** when you want the headset to prepare the scene mesh without a separate toolkit scan.
 
 1. Open `Assets/Scenes/Alignment Demo.unity`.
 2. Set `Target Format` to `realTimeScan`.
