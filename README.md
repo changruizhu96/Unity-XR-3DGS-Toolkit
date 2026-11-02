@@ -10,11 +10,21 @@ Build Unity XR experiences with **3D Gaussian Splatting (3DGS)**. This self-cont
 
 Originally developed for **[MR-Compare](https://github.com/changruizhu96/MR-Compare)**, this is the **actively maintained toolkit repository** for future updates and new features. You do not need to use the paper's comparison workflow to use 3DGS in VR. For the research system, evaluation, and publication, see [Research Origins](#research-origins).
 
-**Start here:** [Get the Project](#get-the-project) · [VR Quick Start](#vr-quick-start) · [MR Registration](#mr-registration) · [Integration Guide](#integration-guide) · [Requirements](#requirements)
+**Start here:** [Demo video](#demo-video) · [Get the Project](#get-the-project) · [VR Quick Start](#vr-quick-start) · [MR Registration](#mr-registration) · [Integration Guide](#integration-guide) · [Requirements](#requirements)
 
 - **Project or package?** A complete Unity project with integrated packages and example scenes, not a standalone UPM-installable toolkit package.
 - **Does it require a PC?** Windows PC + Meta Quest Link is the tested workflow. MR registration uses Windows `x86_64` native libraries and does not run entirely on the headset.
 - **Can I use VR without MR registration?** Yes. Import and render 3DGS in an XR scene without physical-world scanning or registration.
+
+## Demo Video
+
+See the MR-Compare application that the toolkit grew out of: reconstructions registered to a physical office, switching between reconstruction and live passthrough, and spatially grounded comparison with the 3D Slider. This demonstrates the MR comparison workflow; physical-world registration is not required for VR-only use.
+
+[![MR comparison preview — click to watch the office demo](docs/alignment-result-3d-slider.png)](https://changruizhu96.github.io/media/mr-compare/office-demo.mp4)
+
+**[Watch the demo video (MP4, approximately 103 MB)](https://changruizhu96.github.io/media/mr-compare/office-demo.mp4)** · [Watch on the project page](https://changruizhu96.github.io/work/mr-compare/#demo)
+
+The preview opens the video hosted on the existing project website. The recording shows the MR-Compare research application, not a separate evaluation of later toolkit releases.
 
 ## Use the toolkit in two ways
 
@@ -117,11 +127,9 @@ For VR-only development, begin with the renderer and your XR camera/interaction 
 
 The MR path extracts registration points from Gaussian centres or mesh geometry, collects target geometry from Effect Mesh or Environment Depth, and estimates an alignment using FPFH/TEASER++ followed by GICP/VGICP. The transform is applied to the rendered source and can be saved relative to Quest scene references or a spatial anchor.
 
-![MR registration pipeline inherited from MR-Compare](docs/workflow-ai.jpg)
+![MR registration pipeline inherited from MR-Compare: source and target point collection, filtering, coarse registration, fine registration, and XR interaction](docs/workflow.png)
 
-![Example MR extension: registered 3DGS compared with live passthrough using the 3D Slider](docs/alignment-result-3d-slider.png)
-
-The images show the MR comparison application inherited from MR-Compare. This is one use of the toolkit, not a prerequisite for VR rendering.
+The diagram is the current workflow figure from the [MR-Compare project page](https://changruizhu96.github.io/work/mr-compare/#method). It shows the MR comparison application inherited from MR-Compare, one use of the toolkit rather than a prerequisite for VR rendering. See the [demo video](#demo-video) for the in-headset result.
 
 ## Project Status
 
