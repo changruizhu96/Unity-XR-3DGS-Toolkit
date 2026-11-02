@@ -8,6 +8,8 @@
 
 Import and render **3D Gaussian Splatting (3DGS)** in Unity XR, or align reconstructions with the physical world for mixed reality. This is a complete Unity project, tested on **Windows PC + Meta Quest Link**.
 
+Originally developed for **[MR-Compare](https://github.com/changruizhu96/MR-Compare)**, this repository maintains and extends its reusable Unity XR/3DGS tools.
+
 [VR Quick Start](#vr-quick-start) · [MR Quick Start](#mr-registration) · [Demo video](#demo-video) · [Features](#what-is-included) · [Requirements](#requirements)
 
 ## Demo Video
@@ -49,7 +51,7 @@ Open the project in **Unity 6000.0.76f1** and wait for packages to restore. Chec
 **Prerequisite: an indoor, single-room scene.** Bring your own [3DGS reconstruction](#source-preparation-routes) of the room you will scan. Metric scale matters for MR; the demo enables `Estimate Scaling` for non-metric sources, including end-to-end exports such as Luma AI.
 
 1. **Connect Quest through Meta Horizon Link.** Enable spatial data access in the PC app's Developer settings and accept the headset's spatial-data permission prompt.
-2. **Scan:** open `Assets/Scenes/Room Scanner.unity`, enter Play Mode, and hold the left controller's **X** while moving around the room. Release X to pause.
+2. **Scan:** open `Assets/Scenes/Room Scanner.unity`, enter Play Mode, and hold or repeatedly press the left controller's **X** while moving around the room. Release X to pause continuous scanning.
 3. **Save:** press the right controller's **B**. Wait for both point-cloud and anchor UUID save confirmations in the Console, then stop Play Mode.
 4. **Import:** open `Assets/Scenes/Alignment Demo.unity`. Use `Tools > Gaussian Splats > Create GaussianSplatAsset` with `Quality = Very High`, then assign the asset to the existing `3dgs` object's renderer.
 5. **Bake:** under `Baking & Debug`, click **Apply Default Settings**, check that the ROI covers the room, then click **Bake & Generate Asset** and wait for completion. [ROI and filter details](#3dgs-point-cloud-preprocessing).
@@ -282,6 +284,10 @@ This workflow avoids a separate toolkit depth scan by using the headset's captur
 
 ### Environment Depth Scanning Performance
 
+Both included scenes use `Scan Interval = 0.1` seconds: holding X runs one scan, waits 0.1 seconds, and repeats while X remains held (roughly at most 10 scans/second at normal time scale; scan time and frame scheduling lower the actual rate). Repeated presses share the same scan coroutine rather than starting parallel scans. Very rapid taps may not each produce a separate scan.
+
+At the scene preset `Density = high (128)`, each scan synchronously calls raycast 128 × 128 = **16,384 times** before yielding. Keyframe selection happens after capture, so its 0.35-second minimum interval does not throttle this work. Increasing `Scan Interval` reduces how often this work runs; reducing `Density` reduces work per scan. Neither guarantees a particular frame rate, and no new scan-time benchmark has been performed.
+
 In the current tested setup with Meta Horizon Link `208.0.0.84.535`, GPU utilization can reach approximately **90% while Environment Depth scanning is active**, causing frame drops during target point-cloud capture. This may be a Meta Depth API/runtime performance issue; the root cause has not been isolated.
 
 In the included Alignment Demo, pressing **Y** to finish target capture and begin registration automatically deactivates the scanner and its `EnvironmentDepthManager`, shutting down the Depth API. The scan-related slowdown was no longer observed during subsequent alignment and visual comparison in this setup. Pressing **X** to resume scanning reactivates depth capture and may bring back the slowdown. Loading a saved Pre-Scan target for alignment does not require active depth capture.
@@ -292,7 +298,7 @@ This workflow uses the same Environment Depth point-cloud target and registratio
 
 1. Open `Assets/Scenes/Room Scanner.unity`.
 2. Run the scene on Quest.
-3. Hold `X` to scan the physical environment.
+3. Hold or repeatedly press `X` to scan the physical environment.
 4. Press `B` to create a spatial anchor and save the scanned point cloud. With the included scene's defaults, this writes `alignment_scan.bytes` and `alignment_scan.txt` to `Application.persistentDataPath`. Wait for both point-cloud and anchor-file save confirmations before stopping Play Mode.
 5. Open `Assets/Scenes/Alignment Demo.unity`.
 6. Keep the demo's `Workflow Mode = Align` preset.
