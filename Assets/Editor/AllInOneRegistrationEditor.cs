@@ -72,7 +72,21 @@ public class AllInOneRegistrationEditor : Editor
                 case AllInOneRegistration.RoughAlignMode.Teaser:
                     EditorGUILayout.Space(10);
                     EditorGUILayout.LabelField("Teaser++ Parameter", EditorStyles.boldLabel);
-                    EditorGUILayout.PropertyField(serializedObject.FindProperty("estimateScaling"));
+                    SerializedProperty estimateScaling = serializedObject.FindProperty("estimateScaling");
+                    EditorGUILayout.PropertyField(estimateScaling);
+                    if (estimateScaling.boolValue)
+                    {
+                        EditorGUI.indentLevel++;
+                        SerializedProperty coarseScaleAlignment = serializedObject.FindProperty("coarseScaleAlignment");
+                        EditorGUILayout.PropertyField(coarseScaleAlignment);
+                        if (coarseScaleAlignment.boolValue)
+                        {
+                            EditorGUI.indentLevel++;
+                            EditorGUILayout.PropertyField(serializedObject.FindProperty("coarseScaleSamplePercent"), new GUIContent("Coarse Scale Sample (%)"));
+                            EditorGUI.indentLevel--;
+                        }
+                        EditorGUI.indentLevel--;
+                    }
                     EditorGUILayout.PropertyField(serializedObject.FindProperty("voxelSizeTeaser"));
                     EditorGUILayout.PropertyField(serializedObject.FindProperty("maxIterationsTeaser"));
                     EditorGUILayout.PropertyField(serializedObject.FindProperty("noiseBoundTeaser"));

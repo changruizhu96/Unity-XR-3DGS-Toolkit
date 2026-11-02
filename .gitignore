@@ -107,8 +107,12 @@ InitTestScene*.unity*
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
 
 # Local large 3DGS model data
-/Assets/3DGS Model/
-/Assets/3DGS Model.meta
+/Assets/3[Dd][Gg][Ss] [Mm]odel/
+/Assets/3[Dd][Gg][Ss] [Mm]odel.meta
+
+# Local development-agent connection credentials
+/Assets/Resources/DevAgentSettings.asset
+/Assets/Resources/DevAgentSettings.asset.meta
 
 # Local agent documentation
 /memory.md

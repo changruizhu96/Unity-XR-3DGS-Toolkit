@@ -95,6 +95,10 @@ public class AllInOneRegistration : MonoBehaviour
 
 
     [SerializeField] private bool estimateScaling = false; // Added scaling parameter
+    [SerializeField, Tooltip("Pre-adjust source scale using the 90th-percentile radius before the first applied registration. Later realignments skip this step. Use for complete, high-overlap scenes; TEASER++ still estimates residual scale.")]
+    private bool coarseScaleAlignment = false;
+    [SerializeField, Range(0.1f, 100f), Tooltip("Percentage of each cloud sampled for coarse scale estimation. Uses at least three points; 100% uses all points. Larger percentages increase CPU time and memory use. This is separate from the fixed 90th-percentile radius statistic.")]
+    private float coarseScaleSamplePercent = 5f;
     [SerializeField] private float voxelSizeTeaser = 0.1f; // For TEASER++ input point cloud
     [SerializeField] private int maxIterationsTeaser = 150;
     [SerializeField] private float noiseBoundTeaser = 0.1f;
@@ -1699,6 +1703,32 @@ public class AllInOneRegistration : MonoBehaviour
 
         if (roughAligner == RoughAlignMode.Teaser)
         {
+            bool applyCoarseScale = estimateScaling && coarseScaleAlignment && !hasCompletedRegistration;
+            float coarseScale = 1f;
+            Matrix4x4 coarseTransform = Matrix4x4.identity;
+            if (applyCoarseScale)
+            {
+                var timer = System.Diagnostics.Stopwatch.StartNew();
+                try
+                {
+                    float samplePercent = coarseScaleSamplePercent;
+                    var coarse = await Task.Run(() => PrepareCoarseScale(sourceArray, targetArray, samplePercent));
+                    coarseScale = coarse.scale;
+                    coarseTransform = Matrix4x4.TRS(coarse.translation, Quaternion.identity, Vector3.one * coarseScale);
+                    Debug.Log($"[AllInOneRegistration] Coarse scale: {coarseScale:G6}, sampling: {samplePercent:G4}% per cloud, CPU preparation: {timer.Elapsed.TotalMilliseconds:F1} ms (including worker scheduling).");
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogError($"[AllInOneRegistration] Coarse scale preparation failed: {exception.Message}", this);
+                    isRegistrationRunning = false;
+                    return;
+                }
+            }
+            else if (estimateScaling && coarseScaleAlignment && hasCompletedRegistration)
+            {
+                Debug.Log("[AllInOneRegistration] Coarse scale skipped on realignment; retaining the applied scale for TEASER++ refinement.");
+            }
+
             GICPResult result = RunTeaserGICP(
             sourceArray, sourceArray.Length,
             targetArray, targetArray.Length,
@@ -1724,6 +1754,17 @@ public class AllInOneRegistration : MonoBehaviour
             correspondenceRandomnessGICP,
             epsilonGICP);
             Debug.Log(result.message);
+            if (applyCoarseScale && (!float.IsFinite(result.scale) || result.scale <= 0f ||
+                result.matrix == null || result.matrix.Length != 16 || Array.Exists(result.matrix, value => !float.IsFinite(value))))
+            {
+                Debug.LogError($"[AllInOneRegistration] Native registration returned an invalid transform after coarse scaling. Converged={result.converged}, residualScale={result.scale:G6}, matrixLength={result.matrix?.Length ?? 0}, matrixFinite={result.matrix != null && Array.TrueForAll(result.matrix, value => float.IsFinite(value))}. Source transform was not changed.", this);
+                isRegistrationRunning = false;
+                return;
+            }
+            if (applyCoarseScale && !result.converged)
+            {
+                Debug.LogWarning($"[AllInOneRegistration] Native registration reported non-convergence (GICP enabled={useGICP}). Applying its finite candidate transform, consistent with the existing registration path; alignment quality is unverified. CoarseScale={coarseScale:G6}, residualScale={result.scale:G6}.", this);
+            }
             Matrix4x4 T_result = new Matrix4x4();
             for (int i = 0; i < 16; ++i)
             {
@@ -1736,6 +1777,20 @@ public class AllInOneRegistration : MonoBehaviour
             R = T_result.rotation;
             t = T_result.GetColumn(3);
             Debug.Log($"[AllInOneRegistration] Estimated scale from DLL: {s}");
+            if (applyCoarseScale)
+            {
+                // The DLL maps the pre-scaled points; include the scale pivot when mapping the original world points.
+                deltaMatrix = deltaMatrix * coarseTransform;
+                s *= coarseScale;
+                t = deltaMatrix.GetColumn(3);
+                if (!float.IsFinite(s) || s <= 0f || !float.IsFinite(t.x) || !float.IsFinite(t.y) || !float.IsFinite(t.z))
+                {
+                    Debug.LogError("[AllInOneRegistration] Combined scale transform is invalid; source transform was not changed.", this);
+                    isRegistrationRunning = false;
+                    return;
+                }
+                Debug.Log($"[AllInOneRegistration] Combined scale: {s:G6}\nCombined transformation matrix:\n{deltaMatrix}");
+            }
 
         }
 
@@ -1788,6 +1843,119 @@ public class AllInOneRegistration : MonoBehaviour
 
         }
 
+    }
+
+    private static (float scale, Vector3 translation) PrepareCoarseScale(float[] source, float[] target, float samplePercent)
+    {
+        var sourceSize = EstimateCloudSize(source, samplePercent);
+        var targetSize = EstimateCloudSize(target, samplePercent);
+        float scale = (float)(targetSize.radius / sourceSize.radius);
+        if (!float.IsFinite(scale) || scale <= 0f)
+            throw new InvalidOperationException("Point cloud size ratio is not a finite positive scale.");
+
+        Vector3 center = sourceSize.center;
+        Vector3 translation = new Vector3(
+            (float)((1.0 - scale) * center.x),
+            (float)((1.0 - scale) * center.y),
+            (float)((1.0 - scale) * center.z));
+        if (!float.IsFinite(translation.x) || !float.IsFinite(translation.y) || !float.IsFinite(translation.z))
+            throw new InvalidOperationException("Coarse scale pivot exceeds the supported coordinate range.");
+
+        // Reuse the DLL input buffer; neither the source list nor the rendered object's transform is changed.
+        for (int i = 0; i < source.Length; i += 3)
+        {
+            float x = (float)((double)scale * source[i] + translation.x);
+            float y = (float)((double)scale * source[i + 1] + translation.y);
+            float z = (float)((double)scale * source[i + 2] + translation.z);
+            if (!float.IsFinite(x) || !float.IsFinite(y) || !float.IsFinite(z))
+                throw new InvalidOperationException("Source contains non-finite points or overflows during coarse scaling.");
+            source[i] = x;
+            source[i + 1] = y;
+            source[i + 2] = z;
+        }
+        return (scale, translation);
+    }
+
+    private static (Vector3 center, double radius) EstimateCloudSize(float[] points, float samplePercent)
+    {
+        int count = points.Length / 3;
+        if (count < 3 || points.Length % 3 != 0)
+            throw new InvalidOperationException("Coarse scaling requires at least three XYZ points per cloud.");
+
+        if (!float.IsFinite(samplePercent))
+            throw new InvalidOperationException("Coarse scale sampling percentage must be finite.");
+        decimal fraction = (decimal)Math.Max(0.1f, Math.Min(100f, samplePercent)) / 100m;
+        int sampleCount = Math.Min(count, Math.Max(3, (int)Math.Ceiling(count * fraction)));
+        var samples = new Vector3[sampleCount];
+        double cx = 0, cy = 0, cz = 0;
+        uint random = 0x9E3779B9u;
+        for (int i = 0; i < sampleCount; i++)
+        {
+            // One reproducible sample per index stratum avoids a fixed stride through ordered scan data.
+            int begin = (int)((long)i * count / sampleCount);
+            int end = (int)((long)(i + 1) * count / sampleCount);
+            random ^= random << 13;
+            random ^= random >> 17;
+            random ^= random << 5;
+            int index = (begin + (int)(random % (uint)(end - begin))) * 3;
+            Vector3 point = new Vector3(points[index], points[index + 1], points[index + 2]);
+            if (!float.IsFinite(point.x) || !float.IsFinite(point.y) || !float.IsFinite(point.z))
+                throw new InvalidOperationException("Coarse scaling encountered a non-finite sampled point.");
+            samples[i] = point;
+            cx += point.x;
+            cy += point.y;
+            cz += point.z;
+        }
+        cx /= sampleCount;
+        cy /= sampleCount;
+        cz /= sampleCount;
+
+        var distances = new double[sampleCount];
+        for (int i = 0; i < sampleCount; i++)
+        {
+            double dx = samples[i].x - cx, dy = samples[i].y - cy, dz = samples[i].z - cz;
+            distances[i] = dx * dx + dy * dy + dz * dz;
+        }
+        Array.Sort(distances);
+        double referenceRadius = Math.Sqrt((distances[(sampleCount - 1) / 2] + distances[sampleCount / 2]) * 0.5);
+        if (!(referenceRadius > 0) || double.IsInfinity(referenceRadius))
+            throw new InvalidOperationException("Point cloud has no usable spatial extent for coarse scaling.");
+
+        // Smoothed Weiszfeld iterations approximate the geometric median with bounded work and relative tolerances.
+        double epsilon = referenceRadius * 1e-6;
+        for (int iteration = 0; iteration < 32; iteration++)
+        {
+            double sx = 0, sy = 0, sz = 0, weights = 0;
+            for (int i = 0; i < sampleCount; i++)
+            {
+                Vector3 point = samples[i];
+                double dx = point.x - cx, dy = point.y - cy, dz = point.z - cz;
+                double weight = 1.0 / Math.Max(Math.Sqrt(dx * dx + dy * dy + dz * dz), epsilon);
+                sx += point.x * weight;
+                sy += point.y * weight;
+                sz += point.z * weight;
+                weights += weight;
+            }
+            double nx = sx / weights, ny = sy / weights, nz = sz / weights;
+            double mx = nx - cx, my = ny - cy, mz = nz - cz;
+            cx = nx;
+            cy = ny;
+            cz = nz;
+            if (mx * mx + my * my + mz * mz <= epsilon * epsilon)
+                break;
+        }
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            double dx = samples[i].x - cx, dy = samples[i].y - cy, dz = samples[i].z - cz;
+            distances[i] = dx * dx + dy * dy + dz * dz;
+        }
+        Array.Sort(distances);
+        int radiusIndex = (int)Math.Ceiling(0.9 * sampleCount) - 1;
+        double radius = Math.Sqrt(distances[radiusIndex]);
+        if (!(radius > epsilon) || double.IsInfinity(radius))
+            throw new InvalidOperationException("Point cloud is too concentrated to estimate a coarse scale.");
+        return (new Vector3((float)cx, (float)cy, (float)cz), radius);
     }
 
     float[] ConvertToFloatArray(List<Vector3> points)

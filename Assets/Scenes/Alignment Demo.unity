@@ -3627,7 +3627,9 @@ MonoBehaviour:
   pointCloudVFX: {fileID: 1813918185}
   scannerTarget: {fileID: 1696225539}
   allowRepeatedAlignment: 1
-  estimateScaling: 0
+  estimateScaling: 1
+  coarseScaleAlignment: 1
+  coarseScaleSamplePercent: 20
   voxelSizeTeaser: 0.1
   maxIterationsTeaser: 150
   noiseBoundTeaser: 0.1
@@ -3656,6 +3658,7 @@ MonoBehaviour:
   isSaving: 1
   alignmentReferenceMode: 0
   alignmentFile: alignment_scan.json
+  deactivateMrukAfterEffectMeshUse: 1
 --- !u!4 &634045722
 Transform:
   m_ObjectHideFlags: 0
