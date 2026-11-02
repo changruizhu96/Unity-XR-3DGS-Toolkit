@@ -86,27 +86,31 @@ Open the repository root in Unity `6000.0.76f1`, let the package manager restore
 
 ### Option B — Register 3DGS to the physical world in MR
 
-**Metric scale is essential for MR registration:** the reconstructed scene must match the physical environment's real-world dimensions, as well as its position and orientation. Quest depth scans provide a metric target, while an imported reconstruction may use arbitrary units. Preparing the source at metric scale is preferable; for a non-metric source, use the scale-estimation workflow in step 2 below.
+**Prerequisite: an indoor, single-room scene.** This Quick Start and its default filtering preset assume your reconstruction and depth scan cover the same room with high overlap. The default selection ROI is a 10 × 10 × 10 Unity-world-unit box centered on the source object's origin. Check that the room fits inside it before baking, especially for non-metric reconstructions; adjust `ROI Size` or `Center Offset` under `Advanced Bake Settings` if needed. Later scale estimation cannot recover points already removed by the ROI.
 
-**Choose one of three ways to capture your physical target:**
+**Metric scale is essential for MR registration:** the reconstruction must match the physical environment's dimensions, position, and orientation. The depth scan provides a metric target; enable `Estimate Scaling` if your 3DGS uses arbitrary units.
 
-- **Depth pre-scan:** use the toolkit's scanner to capture and save a target point cloud, then reuse it in a later alignment session.
-- **Real-time depth scan and align:** capture target points and align the reconstruction in the same scene and session.
-- **Quest 3 built-in environment setup:** complete `Settings > Environment Setup > Space Setup` directly on the headset. Quest assists with scanning the room, and the toolkit uses the resulting scene mesh without a separate toolkit depth scan. See [Meta's official assisted Space Setup guide](https://www.meta.com/help/quest/853707093070890/).
+**Recommended first run: scan in `Room Scanner.unity`, press B to save, then run `Alignment Demo.unity`.** Both scenes are included: the scanner saves to the filenames the aligner already loads, and Alignment Demo is preset to `preScan`. Once your own 3DGS is imported and baked, no target-mode or filename changes are needed. See [Source Preparation Routes](#source-preparation-routes) if you have not created a reconstruction of the same physical environment yet.
 
-1. Follow [Get the Project](#get-the-project), open it in Unity `6000.0.76f1`, and let Unity restore the packages.
-2. Prepare a source scene using one of these routes:
-   - **Fast mobile route — [Scaniverse](https://scaniverse.com/):** capture and process a Gaussian splat directly on a phone. This requires the fewest reconstruction steps and is the easiest first experience.
-   - **Higher-quality desktop route — [RealityScan](https://www.realityscan.com/download):** [align the source images](https://rshelp.capturingreality.com/en-US/tutorials/quickstart_2.htm), establish metric scale with [control points and distance constraints](https://rshelp.capturingreality.com/en-US/tutorials/scaling.htm), then export a mesh or pass the calibrated cameras and images to a desktop 3DGS pipeline.
-   - **Non-metric end-to-end workflow — e.g. Luma AI:** if the exported reconstruction is not at metric scale, enable `AllInOneRegistration > Estimate Scaling` after importing it. For complete source and target clouds with high overlap, you can also enable `Coarse Scale Alignment` to initialize scale before the first alignment; later realignments skip this initialization. After the initial alignment, inspect the result and press the controller's **Y** button to realign if needed, as described in steps 7–8.
-3. Import the 3DGS asset or mesh into `Assets/Scenes/Alignment Demo.unity`. For 3DGS, create the asset with `Quality` set to `Very High`.
-4. Use `Gaussian Splat Render > Baking & Debug` to remove floaters, skybox points, and unrelated background geometry.
-5. Prepare the physical target using one of the three workflows above. For the built-in environment setup route, finish Space Setup on the headset before running the Alignment Demo. For either depth-scan route, follow the corresponding scanner workflow below.
-6. On `AllInOneRegistration`, set `Workflow Mode` to `Align`, choose the target format, and assign the source renderer or mesh plus the required target reference.
-7. Run `Alignment Demo.unity`. The tested defaults use TEASER++ for coarse registration, GICP for refinement, baked source data, and repeated alignment. Registration normally runs once automatically when the source and target are ready. For Real-Time Scan, collect the scan first and press the controller's `Y` button to trigger alignment.
-8. Visually inspect the result. If the first alignment is incorrect, press the controller's `Y` button to realign. Keep `Allow Repeated Alignment` enabled. Each realignment uses the source's current transform and re-estimates alignment; `Estimate Scaling` continues to estimate the remaining scale difference. In current testing, some initially unsuccessful alignments became visually correct after several realignments. This is an observed result, not a guarantee for every scene.
+**A. Scan and save the physical target**
 
-See [Choosing a Registration Target](#choosing-a-registration-target) for the Inspector modes corresponding to these workflows and their detailed setup instructions.
+1. Follow [Get the Project](#get-the-project), open the project in Unity `6000.0.76f1`, and connect your Quest through Meta Horizon Link. Enable spatial data access over Link in the PC app's Developer settings and accept the headset's spatial-data permission prompt when requested.
+2. Open `Assets/Scenes/Room Scanner.unity`. Select `Quest Scanner`, keep `Scanner Mode` set to `Scan`, and leave the existing camera, raycast, anchor, and visualization references assigned. Under `Save Files`, keep `Point Cloud File` as `alignment_scan.bytes` and `Anchor Uuid File` as `alignment_scan.txt`.
+3. Enter Unity Play Mode. In the headset, **hold the left controller's X button** while looking around and moving through the area represented by your reconstruction. Check that the point-cloud visualization covers the room; release X to pause and hold it again to collect more points.
+4. **Press the right controller's B button** to create the spatial anchor and save the scan. Wait for both `Successfully saved ... points to ...` and `Anchor UUID saved to ...` in the Unity Console before stopping Play Mode. Saving is triggered by B, not by releasing X.
+
+The files are written automatically to `Application.persistentDataPath`; no manual export or copying is needed when both scenes run from this Unity project on the same PC. Keeping the default filenames is sufficient. To keep multiple scans, choose a different pair of filenames under `Save Files` and use that same pair in the aligner; saving to an existing filename replaces that scan file.
+
+**B. Load the target and align your 3DGS**
+
+1. Stop Play Mode and open `Assets/Scenes/Alignment Demo.unity`.
+2. Open `Tools > Gaussian Splats > Create GaussianSplatAsset`, import your 3DGS, and assign the created asset to the existing `3dgs` object's `Gaussian Splat Render` component. `Quality` defaults to `Very High` on first use; if the editor remembers a previous choice, select `Very High` for registration. The repository does not include the reconstruction shown in the demo video.
+3. On that component, go to `Baking & Debug`, click **Apply Default Settings**, then **Bake & Generate Asset**. The preset enables Auto `Max Flatness`, `Density Filter`, and `Enable Selection ROI`. Applying defaults only sets parameters; Bake calculates Flatness from the current splats and generates the baked data, assigning it to the renderer automatically. Wait for the bake to finish. The indoor single-room ROI prerequisite above applies; make any necessary ROI adjustment after applying defaults and before baking.
+4. Leave the `Aligner` object's preset settings in place: `Align`, `preScan`, `GaussianSplating`, and `Use Baked Data`. Its `Gaussian Source Renderer` already points to the existing `3dgs` object, and the scan filenames, anchor holder, point-cloud VFX, and `SpatialAnchor` save reference are assigned. Only change the renderer reference if you created a different source object, or the filenames if you renamed the scan in stage A.
+5. Enter Play Mode in the scanned physical space. The aligner automatically loads `alignment_scan.bytes` and `alignment_scan.txt`, then runs the first alignment once the anchor and points are ready. The demo already enables TEASER++ scale estimation, one-time coarse scale initialization with 20% sampling, GICP refinement, and repeated alignment. You do not need to scan again or press Y to start this first pass. If the Console reports missing files or an anchor-localization failure, check the saved filename pair and return to the scanned space before proceeding.
+6. Inspect the reconstruction against passthrough. If it is not aligned correctly, **press the left controller's Y button** to realign using the current source transform and the retained target. In current testing, some initially unsuccessful alignments became visually correct after several realignments; this is not a guarantee for every scene.
+
+This is the recommended two-scene path. [Choosing a Registration Target](#choosing-a-registration-target) explains the other supported workflows, including same-session scanning and Quest's built-in environment setup. See [Environment Depth Scanning Performance](#environment-depth-scanning-performance) for the observed scan-time GPU load.
 
 ### Visual Comparison Controls
 
@@ -205,16 +209,24 @@ For the MR registration path, import your own reconstructed environment; the too
 
 Supported source types:
 
-- **3D Gaussian Splatting**: use `Tools > Gaussian Splats > Create GaussianSplatAsset`, set `Quality` to `Very High`, create the asset, and assign its `GaussianSplatRenderer` to the aligner. Registration relies on the uncompressed `Very High` position data to read Gaussian centres correctly; this requirement does not apply to VR-only rendering.
+- **3D Gaussian Splatting**: use `Tools > Gaussian Splats > Create GaussianSplatAsset`, use `Quality: Very High` (the first-use default), create the asset, and assign its `GaussianSplatRenderer` to the aligner. Previously saved quality choices are retained. Registration relies on the uncompressed `Very High` position data to read Gaussian centres correctly; this requirement does not apply to VR-only rendering.
 - **Mesh**: import a reconstructed mesh and assign its `MeshFilter` to the aligner.
 
 The current Inspector enum uses the spelling `GaussianSplating`; this refers to the 3D Gaussian Splatting source mode.
+
+### Source Preparation Routes
+
+Prepare a reconstruction of the physical environment you intend to scan and align:
+
+- **Fast mobile route — [Scaniverse](https://scaniverse.com/):** capture and process a Gaussian splat directly on a phone, with few reconstruction steps.
+- **Desktop route with metric calibration — [RealityScan](https://www.realityscan.com/download):** [align the source images](https://rshelp.capturingreality.com/en-US/tutorials/quickstart_2.htm), establish metric scale with [control points and distance constraints](https://rshelp.capturingreality.com/en-US/tutorials/scaling.htm), then export a mesh or pass the calibrated cameras and images to a desktop 3DGS pipeline.
+- **Non-metric end-to-end workflow — e.g. Luma AI:** if the exported reconstruction uses arbitrary units, enable `AllInOneRegistration > Estimate Scaling`. For complete source and target clouds with high overlap, optional `Coarse Scale Alignment` initializes scale before the first applied alignment; later Y realignments skip this initialization.
 
 ### Source Scale Requirement
 
 The most important requirement for 3DGS registration is scale. The 3DGS scene should be reconstructed at real-world scale, or at least be close enough that TEASER++ can estimate a usable scale correction.
 
-The Quick Start lists the recommended Scaniverse and RealityScan routes. For a desktop 3DGS handoff, preserve RealityScan's calibrated camera poses and metric scale when moving the images into a dedicated generator such as LichtFeld Studio, Nerfstudio's gsplat workflow, or Postshot.
+For a desktop 3DGS handoff, preserve RealityScan's calibrated camera poses and metric scale when moving the images into a dedicated generator such as LichtFeld Studio, Nerfstudio's gsplat workflow, or Postshot.
 
 If the imported 3DGS scale is inaccurate, first resize the source to a roughly correct scale in Unity, then enable TEASER++ `Estimate Scaling`. Alternatively, when the filtered source and metric target both cover the same complete scene with high overlap, enable `Coarse Scale Alignment` under `Estimate Scaling` to estimate an initial size ratio before native downsampling and feature matching. Newly added components leave coarse scaling off; the included Alignment Demo enables both scale options with 20% sampling. Partial scans and strongly different sampling densities can bias this ratio; retain manual scale preparation for those cases.
 
@@ -226,20 +238,21 @@ Use the `Baking & Debug` section on the `Gaussian Splat Render` component.
 
 Important settings:
 
-- `Max Flatness`: controls filtering based on splat flatness. The `Auto` option works for most scenes and is the recommended starting point.
-- `Density Filter`: reduces isolated outlier noise and helps keep the matching point cloud stable.
-- `Enable Selection ROI`: restricts the baked/matching points to a region of interest. Use this to remove unwanted background, skybox content, or unrelated geometry captured in the 3DGS.
+- `Apply Default Settings`: restores the indoor single-room bake preset without starting a bake. It enables Auto Flatness, density filtering, and ROI; resets minimum opacity to `0`, grid spacing to `0.05`, minimum neighbors to `2`, and coordinate normalization to off; and restores a 10 × 10 × 10 box centered on the renderer's origin, with no center override or offset. Apply it before any scene-specific adjustments.
+- `Max Flatness`: defaults to Auto. Clicking Bake calculates the median splat scale ratio before filtering. Open `Advanced Bake Settings` and disable `Auto Max Flatness` to enter a manual threshold.
+- `Density Filter`: defaults to on, with grid spacing `0.05` and minimum neighbors `2`. These are a starting preset, not an automatic estimate of metric scale; adjust them under `Advanced Bake Settings` if the source units or density differ substantially.
+- `Enable Selection ROI`: defaults to on for new renderers and is enabled in Alignment Demo; existing components retain their serialized choice. The default box is 10 × 10 × 10 world units, centered on the renderer's origin. It restricts baked points to the room of interest; check its coverage for large, offset, or non-metric scenes.
+
+Auto Flatness runs only when Bake is clicked, using the existing GPU export/readback and CPU median calculation. It adds no per-frame work during alignment. The displayed `Capture + Save` time excludes this preliminary Auto calculation.
 
 Recommended preprocessing steps:
 
 1. Select the 3DGS object in Unity.
 2. Open the `Gaussian Splat Render` component.
-3. Expand `Baking & Debug`.
-4. Set `Max Flatness` to `Auto` for the first attempt.
-5. Enable the density filter if the 3DGS contains floaters or sparse outliers.
-6. Enable selection ROI if the reconstruction includes background, skybox, or irrelevant regions.
-7. Bake or update the registration point representation.
-8. Assign the cleaned 3DGS source to `AllInOneRegistration`.
+3. Go to `Baking & Debug` and click **Apply Default Settings** to restore the indoor single-room preset. Check that the ROI contains the room; adjust its size or center under `Advanced Bake Settings` if necessary.
+4. Click **Bake & Generate Asset** once. The renderer receives the generated baked asset automatically.
+5. Inspect the baked point cloud; adjust the advanced filters and rebake only if relevant geometry is missing or unwanted background remains.
+6. Use that renderer as the `AllInOneRegistration` source with `Use Baked Data` enabled. Alignment Demo already has these references assigned for its existing `3dgs` object.
 
 If registration fails, inspect the source and target point clouds first. In most failed cases, the cause is one of the following:
 
@@ -251,13 +264,21 @@ If registration fails, inspect the source and target point clouds first. In most
 
 ## Choosing a Registration Target
 
-The three target-capture workflows above map to four `Target Format` modes in `AllInOneRegistration`. For the built-in Quest environment setup workflow, `effectMesh` and the legacy `roomMesh` mode serve the same purpose: using the headset's captured scene mesh as the target. They are separate implementation options for current and older Meta scene components, rather than separate capture workflows.
+The toolkit supports three target-capture workflows:
+
+- **Depth pre-scan (recommended Quick Start):** capture and save a target in `Room Scanner.unity`, then reuse it in `Alignment Demo.unity`.
+- **Real-time depth scan and align:** capture target points and align the reconstruction in the same scene and session.
+- **Quest 3 built-in environment setup:** complete `Settings > Environment Setup > Space Setup` directly on the headset. Quest assists with scanning the room, and the toolkit uses the resulting scene mesh without a separate toolkit depth scan. See [Meta's official assisted Space Setup guide](https://www.meta.com/help/quest/853707093070890/).
+
+These workflows map to four `Target Format` modes in `AllInOneRegistration`. For the built-in Quest environment setup workflow, `effectMesh` and the legacy `roomMesh` mode serve the same purpose: using the headset's captured scene mesh as the target. They are separate implementation options for current and older Meta scene components, rather than separate capture workflows.
 
 `preScan` and `realTimeScan` use the same underlying target-generation and registration path: the Quest Environment Depth scanner produces a point cloud, which is then aligned with the reconstructed source through the same TEASER/GICP pipeline. The difference is how the workflow is organized. `preScan` saves the scan and anchor for a later alignment session, while `realTimeScan` passes the scanner points directly to alignment in the same scene and session.
 
 When `Allow Repeated Alignment` is enabled, pressing `Y` after the initial alignment reruns registration with the retained target data in `preScan`, `roomMesh`, and `effectMesh` modes. In `realTimeScan`, X can add scan coverage before Y runs the next alignment. Repeated alignment refreshes the source point cloud in its current pose, so each pass acts as an incremental refinement.
 
-New `AllInOneRegistration` components use the tested default profile: `Align`, `effectMesh`, `GaussianSplating`, TEASER rough alignment, GICP refinement, baked source data, repeated alignment enabled, and automatic alignment saving disabled. The numeric TEASER/GICP and selection defaults match `Alignment Demo.unity`. The included demo scene already contains the required Quest scanner and Meta scene references; users only need to import and assign their own reconstruction source. Custom scenes must provide the references required by their selected target mode.
+The included **Alignment Demo is preset to `preScan`** with `alignment_scan.bytes` / `alignment_scan.txt`, the scan anchor and point-cloud VFX references, `SpatialAnchor` alignment saving, and the existing `3dgs` source renderer. It is ready to load the output of Room Scanner once you import and bake your own source. Its embedded scanner and Meta scene references remain available if you explicitly switch to another target mode.
+
+Newly added `AllInOneRegistration` components still start with `Align`, `effectMesh`, `GaussianSplating`, TEASER rough alignment, GICP refinement, baked source data, repeated alignment enabled, and automatic alignment saving disabled. Custom scenes require their own target references; use the included demo for the prepared Pre-Scan workflow.
 
 | Target format | Recommended use | Target data | Main tradeoff |
 | --- | --- | --- | --- |
@@ -268,7 +289,7 @@ New `AllInOneRegistration` components use the tested default profile: `Align`, `
 
 ## Detailed Usage
 
-### Simplest Workflow: Quest Environment Setup
+### Quest Environment Setup Workflow
 
 Use this workflow to capture the room through Quest's own environment setup and use its scene mesh as the registration target. The steps below use the current `effectMesh` mode; `roomMesh` is the legacy implementation of this workflow. Registration accuracy depends on the accuracy, coverage, and geometric detail of the headset's captured mesh.
 
@@ -293,7 +314,7 @@ Use this workflow to capture the room through Quest's own environment setup and 
 17. Run the scene and wait for the effect mesh target to load.
 18. After registration completes, inspect the registered source with the visual comparison tools.
 
-This workflow avoids a separate Environment Depth scan, which makes it the quickest route to registration.
+This workflow avoids a separate toolkit depth scan by using the headset's captured scene mesh.
 
 ### Environment Depth Scanning Performance
 
@@ -308,12 +329,12 @@ This workflow uses the same Environment Depth point-cloud target and registratio
 1. Open `Assets/Scenes/Room Scanner.unity`.
 2. Run the scene on Quest.
 3. Hold `X` to scan the physical environment.
-4. Press `B` to create a spatial anchor and save the scanned point cloud.
+4. Press `B` to create a spatial anchor and save the scanned point cloud. With the included scene's defaults, this writes `alignment_scan.bytes` and `alignment_scan.txt` to `Application.persistentDataPath`. Wait for both point-cloud and anchor-file save confirmations before stopping Play Mode.
 5. Open `Assets/Scenes/Alignment Demo.unity`.
-6. Set `Workflow Mode` to `Align`.
-7. Set `Target Format` to `preScan`.
-8. Assign the saved point cloud file name and anchor UUID file name.
-9. Assign the anchor holder.
+6. Keep the demo's `Workflow Mode = Align` preset.
+7. Keep its `Target Format = preScan` preset; choose this mode explicitly only when configuring a custom scene or switching back from another workflow.
+8. Keep `Point Cloud Target File = alignment_scan.bytes` and `Anchor Uuid File = alignment_scan.txt`; if you renamed either file in the scanner, enter the matching name here.
+9. Keep the included scene's anchor-holder and point-cloud VFX references, or assign them when building a custom scene.
 10. Configure the source type and source object.
 11. Use `SpatialAnchor` as the alignment reference mode if you want the result to persist relative to the saved scan anchor.
 12. Run registration.

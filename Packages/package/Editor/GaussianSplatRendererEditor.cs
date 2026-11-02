@@ -43,7 +43,9 @@ namespace GaussianSplatting.Editor
         // Ablation-study controls
         float m_BakeMinOpacity = 0f;
         float m_BakeScaleRatio = 1f;
-        bool m_BakeEnableDensity = false;
+        bool m_BakeEnableDensity = true;
+        bool m_BakeAutoFlatness = true;
+        bool m_BakeAdvancedExpanded = false;
         float m_LastAutoBakeScaleRatio = -1f;
 
         // BakedData reference and baking parameters
@@ -197,56 +199,69 @@ namespace GaussianSplatting.Editor
             // =================================================================================
             // Ablation Study panel
             // =================================================================================
+            GUILayout.Label("Baking & Debug", EditorStyles.boldLabel);
             // 1. Show the currently referenced asset.
             EditorGUILayout.PropertyField(m_PropBakedData);
 
+            if (GUILayout.Button(new GUIContent("Apply Default Settings", "Restore the indoor single-room bake preset. This does not start baking.")))
+            {
+                m_BakeMinOpacity = 0f;
+                m_BakeScaleRatio = 1f;
+                m_BakeAutoFlatness = true;
+                m_BakeEnableDensity = true;
+                m_LastAutoBakeScaleRatio = -1f;
+                m_PropDensityGridSpacing.floatValue = 0.05f;
+                m_PropDensityMinNeighbors.intValue = 2;
+                m_PropAutoNormalizeCoords.boolValue = false;
+                m_PropEnableSelectionFilter.boolValue = true;
+                m_PropSelectionShape.enumValueIndex = (int)GaussianSplatRenderer.BakeSelectionShape.Box;
+                m_PropSelectionSize.vector3Value = new Vector3(10f, 10f, 10f);
+                m_PropSelectionCenterOverride.objectReferenceValue = null;
+                m_PropSelectionUsePointCentroid.boolValue = false;
+                m_PropSelectionCenterOffset.vector3Value = Vector3.zero;
+                serializedObject.ApplyModifiedProperties();
+            }
+
             // 2. Parameter controls
-            EditorGUI.indentLevel++;
-            m_BakeMinOpacity = EditorGUILayout.Slider("Min Opacity", m_BakeMinOpacity, 0f, 1f);
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                m_BakeScaleRatio = EditorGUILayout.Slider(new GUIContent("Max Flatness", "1.0=No Filter, 0.1=Strict Surface"), m_BakeScaleRatio, 0.0f, 1.0f);
-                if (GUILayout.Button(new GUIContent("Auto", "Set Max Flatness to the median scale ratio of the current splats"), GUILayout.Width(52)))
-                {
-                    if (TryAutoPickBakeScaleRatio(gs, out float autoRatio))
-                    {
-                        m_BakeScaleRatio = autoRatio;
-                        m_LastAutoBakeScaleRatio = autoRatio;
-                        Repaint();
-                    }
-                    else
-                    {
-                        EditorUtility.DisplayDialog("Auto Flatness", "Failed to read scale ratio distribution from the current renderer.", "OK");
-                    }
-                }
-            }
-            if (m_LastAutoBakeScaleRatio >= 0f)
-            {
-                EditorGUILayout.LabelField("Auto Flatness (Median)", m_LastAutoBakeScaleRatio.ToString("F4"));
-            }
+            EditorGUILayout.LabelField("Max Flatness", m_BakeAutoFlatness ? "Auto (median, calculated on Bake)" : m_BakeScaleRatio.ToString("F4"));
             m_BakeEnableDensity = EditorGUILayout.Toggle(new GUIContent("Density Filter", "Remove floating noise"), m_BakeEnableDensity);
-            if (m_BakeEnableDensity)
-            {
-                EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(m_PropDensityGridSpacing, new GUIContent("Grid Spacing", "Spatial grid size in meters. Smaller values are more precise but may remove edge points."));
-                EditorGUILayout.PropertyField(m_PropDensityMinNeighbors, new GUIContent("Min Neighbors", "Set to 0 to disable density filtering."));
-                EditorGUILayout.PropertyField(m_PropAutoNormalizeCoords, new GUIContent("Auto Normalize Coords", "Detect large coordinates and adjust Grid Spacing for millimeter- or centimeter-scale scenes."));
-                EditorGUI.indentLevel--;
-            }
-
             EditorGUILayout.PropertyField(m_PropEnableSelectionFilter, new GUIContent("Enable Selection ROI"));
-            if (m_PropEnableSelectionFilter.boolValue)
+            m_BakeAdvancedExpanded = EditorGUILayout.Foldout(m_BakeAdvancedExpanded, "Advanced Bake Settings", true);
+            if (m_BakeAdvancedExpanded)
             {
                 EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(m_PropSelectionShape, new GUIContent("ROI Shape"));
-                EditorGUILayout.PropertyField(m_PropSelectionSize, new GUIContent("ROI Size"));
-                EditorGUILayout.PropertyField(m_PropSelectionCenterOverride, new GUIContent("Center Override"));
-                EditorGUILayout.PropertyField(m_PropSelectionUsePointCentroid, new GUIContent("Use Point Centroid"));
-                EditorGUILayout.PropertyField(m_PropSelectionCenterOffset, new GUIContent("Center Offset"));
+                m_BakeMinOpacity = EditorGUILayout.Slider("Min Opacity", m_BakeMinOpacity, 0f, 1f);
+                m_BakeAutoFlatness = EditorGUILayout.Toggle("Auto Max Flatness", m_BakeAutoFlatness);
+                if (!m_BakeAutoFlatness)
+                {
+                    m_BakeScaleRatio = EditorGUILayout.Slider(new GUIContent("Max Flatness", "1.0=No Filter, 0.1=Strict Surface"), m_BakeScaleRatio, 0.0f, 1.0f);
+                }
+                if (m_LastAutoBakeScaleRatio >= 0f)
+                {
+                    EditorGUILayout.LabelField("Auto Flatness (Median)", m_LastAutoBakeScaleRatio.ToString("F4"));
+                }
+                if (m_BakeEnableDensity)
+                {
+                    EditorGUI.indentLevel++;
+                    EditorGUILayout.PropertyField(m_PropDensityGridSpacing, new GUIContent("Grid Spacing", "Spatial grid size in meters. Smaller values are more precise but may remove edge points."));
+                    EditorGUILayout.PropertyField(m_PropDensityMinNeighbors, new GUIContent("Min Neighbors", "Set to 0 to disable density filtering."));
+                    EditorGUILayout.PropertyField(m_PropAutoNormalizeCoords, new GUIContent("Auto Normalize Coords", "Detect large coordinates and adjust Grid Spacing for millimeter- or centimeter-scale scenes."));
+                    EditorGUI.indentLevel--;
+                }
+
+                if (m_PropEnableSelectionFilter.boolValue)
+                {
+                    EditorGUI.indentLevel++;
+                    EditorGUILayout.PropertyField(m_PropSelectionShape, new GUIContent("ROI Shape"));
+                    EditorGUILayout.PropertyField(m_PropSelectionSize, new GUIContent("ROI Size"));
+                    EditorGUILayout.PropertyField(m_PropSelectionCenterOverride, new GUIContent("Center Override"));
+                    EditorGUILayout.PropertyField(m_PropSelectionUsePointCentroid, new GUIContent("Use Point Centroid"));
+                    EditorGUILayout.PropertyField(m_PropSelectionCenterOffset, new GUIContent("Center Offset"));
+                    EditorGUI.indentLevel--;
+                }
+
                 EditorGUI.indentLevel--;
             }
-
-            EditorGUI.indentLevel--;
 
             // 3. Action button
             EditorGUILayout.Space(2);
@@ -254,14 +269,23 @@ namespace GaussianSplatting.Editor
             {
                 // Invoke the renderer's updated logic.
                 serializedObject.ApplyModifiedProperties();
-                gs.CaptureAndBakeData(m_BakeMinOpacity, m_BakeScaleRatio, m_BakeEnableDensity);
+                if (!m_BakeAutoFlatness || TryAutoPickBakeScaleRatio(gs, out m_BakeScaleRatio))
+                {
+                    if (m_BakeAutoFlatness)
+                        m_LastAutoBakeScaleRatio = m_BakeScaleRatio;
+                    gs.CaptureAndBakeData(m_BakeMinOpacity, m_BakeScaleRatio, m_BakeEnableDensity);
+                }
+                else
+                {
+                    EditorUtility.DisplayDialog("Auto Flatness", "Failed to read scale ratio distribution from the current renderer. Bake was not started.", "OK");
+                }
             }
 
             // 4. Status information
             if (gs.m_BakedData != null)
             {
                 string bakeInfo = gs.m_HasLastBakeStats
-                    ? $"Current Data: {gs.m_BakedData.PointCount:N0} points\nLast Bake Total: {gs.m_LastBakeDurationMs:F1} ms\nGPU+Readback: {gs.m_LastBakeGpuDurationMs:F1} ms\nCPU+Save: {gs.m_LastBakeCpuDurationMs:F1} ms"
+                    ? $"Current Data: {gs.m_BakedData.PointCount:N0} points\nCapture + Save (excludes Auto): {gs.m_LastBakeDurationMs:F1} ms\nGPU+Readback: {gs.m_LastBakeGpuDurationMs:F1} ms\nCPU+Save: {gs.m_LastBakeCpuDurationMs:F1} ms"
                     : $"Current Data: {gs.m_BakedData.PointCount:N0} points";
                 EditorGUILayout.HelpBox(bakeInfo, MessageType.Info);
             }

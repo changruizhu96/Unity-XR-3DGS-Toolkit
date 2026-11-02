@@ -40,7 +40,7 @@ namespace GaussianSplatting.Editor
         [SerializeField] bool m_ImportCameras = true;
 
         [SerializeField] string m_OutputFolder = "Assets/GaussianAssets";
-        [SerializeField] DataQuality m_Quality = DataQuality.Medium;
+        [SerializeField] DataQuality m_Quality = DataQuality.VeryHigh;
         [SerializeField] GaussianSplatAsset.VectorFormat m_FormatPos;
         [SerializeField] GaussianSplatAsset.VectorFormat m_FormatScale;
         [SerializeField] GaussianSplatAsset.ColorFormat m_FormatColor;
@@ -68,7 +68,7 @@ namespace GaussianSplatting.Editor
 
         void Awake()
         {
-            m_Quality = (DataQuality)EditorPrefs.GetInt(kPrefQuality, (int)DataQuality.Medium);
+            m_Quality = (DataQuality)EditorPrefs.GetInt(kPrefQuality, (int)DataQuality.VeryHigh);
             m_OutputFolder = EditorPrefs.GetString(kPrefOutputFolder, "Assets/GaussianAssets");
         }
 

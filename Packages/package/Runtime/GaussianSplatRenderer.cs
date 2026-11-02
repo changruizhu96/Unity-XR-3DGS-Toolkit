@@ -497,7 +497,7 @@ namespace GaussianSplatting.Runtime
         public bool m_AutoNormalizeCoords = false;
 
         [Tooltip("Enable spatial ROI filtering during bake.")]
-        public bool m_EnableSelectionFilter = false;
+        public bool m_EnableSelectionFilter = true;
         [Tooltip("Selection region shape in world space.")]
         public BakeSelectionShape m_SelectionShape = BakeSelectionShape.Box;
         [Tooltip("Selection region size in world space. For Sphere mode this is ellipsoid diameter.")]

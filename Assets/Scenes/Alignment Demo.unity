@@ -3614,7 +3614,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   workflowMode: 0
-  targetFormat: 2
+  targetFormat: 1
   sourceType: 0
   roughAligner: 0
   gaussianSourceRenderer: {fileID: 839451690}
