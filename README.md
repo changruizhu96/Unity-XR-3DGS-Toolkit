@@ -8,7 +8,7 @@
 
 Import and render **3D Gaussian Splatting (3DGS)** in Unity XR, or align reconstructions with the physical world for mixed reality. This is a complete Unity project, tested on **Windows PC + Meta Quest Link**.
 
-Originally developed for **[MR-Compare](https://github.com/changruizhu96/MR-Compare)**, this repository maintains and extends its reusable Unity XR/3DGS tools.
+This toolkit maintains and extends the Unity XR/3DGS tools developed for **[MR-Compare](https://github.com/changruizhu96/MR-Compare)**, a research system for aligning and visually comparing 3DGS and mesh reconstructions with real environments. Its **IEEE TVCG** paper was presented at **[IEEE ISMAR 2026](https://www.ieeeismar.net/2026/papers/)** and received a **[Best Paper Award Honorable Mention](https://www.ieeeismar.net/2026/awards/)**.
 
 [VR Quick Start](#vr-quick-start) · [MR Quick Start](#mr-registration) · [Demo video](#demo-video) · [Features](#what-is-included) · [Requirements](#requirements)
 
@@ -48,7 +48,15 @@ Open the project in **Unity 6000.0.76f1** and wait for packages to restore. Chec
 
 ### Option B — Register 3DGS to the physical world in MR
 
-**Prerequisite: an indoor, single-room scene.** Bring your own [3DGS reconstruction](#source-preparation-routes) of the room you will scan. Metric scale matters for MR; the demo enables `Estimate Scaling` for non-metric sources, including end-to-end exports such as Luma AI.
+**Prerequisite: an indoor, single-room scene.** Reconstruct the same room you will scan with Quest. **Metric scale is essential for MR**—start with a metric reconstruction or enable scale estimation.
+
+**Choose your source workflow:**
+
+- **Recommended fastest start — [Scaniverse](https://scaniverse.com/):** scan the room on your phone, generate a [metric-scale Gaussian splat](https://www.nianticspatial.com/products/reconstruct), and export it for Unity. This is our recommended first-run route, with no separate desktop training pipeline to set up.
+- **For higher visual quality — [RealityScan](https://www.realityscan.com/download) + desktop 3DGS:** capture high-quality photos, align them in RealityScan, set metric scale using [known distances](https://rshelp.capturingreality.com/en-US/tutorials/scaling.htm), then train 3DGS from the calibrated cameras and images. Preserve that scale during export; this route gives you more control over capture and training.
+- **Already using Luma AI or another non-metric end-to-end tool?** Import its 3DGS and enable `AllInOneRegistration > Estimate Scaling`. Alignment Demo already enables this option; inspect the result and use **Y** to realign if needed.
+
+**Then scan and align with the included scenes:**
 
 1. **Connect Quest through Meta Horizon Link.** Enable spatial data access in the PC app's Developer settings and accept the headset's spatial-data permission prompt.
 2. **Scan:** open `Assets/Scenes/Room Scanner.unity`, enter Play Mode, and hold or repeatedly press the left controller's **X** while moving around the room. Release X to pause continuous scanning.
@@ -184,7 +192,7 @@ The current Inspector enum uses the spelling `GaussianSplating`; this refers to 
 
 Prepare a reconstruction of the physical environment you intend to scan and align:
 
-- **Fast mobile route — [Scaniverse](https://scaniverse.com/):** capture and process a Gaussian splat directly on a phone, with few reconstruction steps.
+- **Recommended fastest start — [Scaniverse](https://scaniverse.com/):** capture and process a [metric-scale Gaussian splat](https://www.nianticspatial.com/products/reconstruct) directly on a phone, then export it for Unity. This is the recommended first-run route.
 - **Desktop route with metric calibration — [RealityScan](https://www.realityscan.com/download):** [align the source images](https://rshelp.capturingreality.com/en-US/tutorials/quickstart_2.htm), establish metric scale with [control points and distance constraints](https://rshelp.capturingreality.com/en-US/tutorials/scaling.htm), then export a mesh or pass the calibrated cameras and images to a desktop 3DGS pipeline.
 - **Non-metric end-to-end workflow — e.g. Luma AI:** if the exported reconstruction uses arbitrary units, enable `AllInOneRegistration > Estimate Scaling`. For complete source and target clouds with high overlap, optional `Coarse Scale Alignment` initializes scale before the first applied alignment; later Y realignments skip this initialization.
 
