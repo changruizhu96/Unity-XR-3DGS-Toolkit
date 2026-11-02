@@ -100,7 +100,7 @@ The comparison modes can target either a `GaussianSplatRenderer` or a standard `
 
 ## Integration Guide
 
-Start from this Unity project and adapt the parts your application needs. The following are source locations, not independently installable modules; copying a single script into another project is not sufficient to reproduce the configured workflow.
+Start from the included scenes and adapt the components your application needs:
 
 | What you want to build | Starting point | MR registration needed? |
 | --- | --- | --- |
@@ -110,7 +110,7 @@ Start from this Unity project and adapt the parts your application needs. The fo
 | Spatially registered 3DGS or meshes in MR | `Assets/Scenes/Alignment Demo.unity` and `Assets/Scripts/Registration/All In One Registration.cs` | Yes |
 | Passthrough comparison after alignment | `Assets/Scripts/Visual Comparison/` and the comparison controls in `Alignment Demo.unity` | Use aligned content for physical-world comparison |
 
-For VR-only development, begin with the renderer and your XR camera/interaction setup; a physical-room scan and `AllInOneRegistration` are not required. For MR development, start with the supplied alignment scene so the scanner, Meta scene references, and comparison controls remain connected while you replace the source reconstruction.
+For VR development, begin with the renderer and your XR camera/interaction setup. For MR development, replace the source reconstruction in Alignment Demo to reuse its scanner, Meta scene references, and comparison controls.
 
 ### How MR registration extends the renderer
 
@@ -118,13 +118,7 @@ The MR path extracts registration points from Gaussian centres or mesh geometry,
 
 ![MR registration pipeline inherited from MR-Compare: source and target point collection, filtering, coarse registration, fine registration, and XR interaction](docs/workflow.png)
 
-The diagram is the current workflow figure from the [MR-Compare project page](https://changruizhu96.github.io/work/mr-compare/#method). It shows the MR comparison application inherited from MR-Compare, one use of the toolkit rather than a prerequisite for VR rendering. See the [demo video](#demo-video) for the in-headset result.
-
-## Project Status
-
-Unity XR 3DGS Toolkit is a reusable Unity research toolkit rather than a finished consumer application. The repository includes the Unity XR/3DGS workflow, example scenes, MR registration pipeline, bundled native registration libraries, and interaction techniques. Users provide their own reconstructed 3DGS or mesh assets, and some workflows require scene-specific setup and parameter tuning.
-
-“Self-contained” refers to the integrated Unity workflow: the XR renderer, environment capture, registration pipeline, and interaction techniques are maintained in one project. Unity and Meta packages are restored through the package manager, and the current registration backend uses bundled Windows `x86_64` native libraries tested through Meta Quest Link. Registration is not executed entirely on the headset.
+Registration pipeline from [MR-Compare](https://changruizhu96.github.io/work/mr-compare/#method). See the [demo video](#demo-video) for the in-headset result.
 
 ## Requirements
 
@@ -139,12 +133,10 @@ Unity XR 3DGS Toolkit is a reusable Unity research toolkit rather than a finishe
 - Meta OpenXR `2.5.1`
 - Unity OpenXR `1.16.1`
 - Universal Render Pipeline `17.0.4`
-- Windows editor/runtime environment for the native registration plugin
+- Windows PC for the native `x86_64` registration backend, connected to Quest through Link
 - [Microsoft Visual C++ Redistributable v14, x64](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170) for the native registration DLLs
 
-Make sure the Quest headset OS/runtime is compatible with the Meta Quest Link version used on the development PC. Mismatched Quest Link and headset OS versions can cause environment depth, scene, or OpenXR behavior to differ from the tested setup.
-
-For the most stable experience, disable the **Public Test Channel (PTC)** in the Meta Quest Link PC app. PTC releases may introduce runtime changes or regressions before the corresponding general release, which can affect Quest Link, OpenXR, MRUK scene data, or Environment Depth behavior. Use the general-release channel unless you specifically need to test a preview runtime.
+Use compatible Quest headset and PC Link versions. We recommend the general-release Link channel with **Public Test Channel (PTC)** disabled.
 
 Native registration depends on DLLs under:
 
@@ -179,11 +171,11 @@ Packages/package/
 
 ## Preparing Your Source Scene
 
-For the MR registration path, import your own reconstructed environment; the toolkit does not ship with a ready-to-use reconstructed scene. VR-only users can start with [VR Quick Start](#vr-quick-start) without preparing a matching physical-room scan.
+For MR registration, import a reconstruction of the physical environment you will scan. For a VR viewer, follow [VR Quick Start](#vr-quick-start).
 
 Supported source types:
 
-- **3D Gaussian Splatting**: use `Tools > Gaussian Splats > Create GaussianSplatAsset`, use `Quality: Very High` (the first-use default), create the asset, and assign its `GaussianSplatRenderer` to the aligner. Previously saved quality choices are retained. Registration relies on the uncompressed `Very High` position data to read Gaussian centres correctly; this requirement does not apply to VR-only rendering.
+- **3D Gaussian Splatting**: use `Tools > Gaussian Splats > Create GaussianSplatAsset`, select `Quality: Very High`, create the asset, and assign its `GaussianSplatRenderer` to the aligner. Very High provides the uncompressed positions used for registration. The importer defaults to this quality on first use and remembers later choices.
 - **Mesh**: import a reconstructed mesh and assign its `MeshFilter` to the aligner.
 
 The current Inspector enum uses the spelling `GaussianSplating`; this refers to the 3D Gaussian Splatting source mode.
@@ -214,10 +206,10 @@ Important settings:
 
 - `Apply Default Settings`: restores the indoor single-room bake preset without starting a bake. It enables Auto Flatness, density filtering, and ROI; resets minimum opacity to `0`, grid spacing to `0.05`, minimum neighbors to `2`, and coordinate normalization to off; and restores a 10 × 10 × 10 box centered on the renderer's origin, with no center override or offset. Apply it before any scene-specific adjustments.
 - `Max Flatness`: defaults to Auto. Clicking Bake calculates the median splat scale ratio before filtering. Open `Advanced Bake Settings` and disable `Auto Max Flatness` to enter a manual threshold.
-- `Density Filter`: defaults to on, with grid spacing `0.05` and minimum neighbors `2`. These are a starting preset, not an automatic estimate of metric scale; adjust them under `Advanced Bake Settings` if the source units or density differ substantially.
+- `Density Filter`: defaults to on, with grid spacing `0.05` and minimum neighbors `2`. Adjust these under `Advanced Bake Settings` to suit the source's units and point density.
 - `Enable Selection ROI`: defaults to on for new renderers and is enabled in Alignment Demo; existing components retain their serialized choice. The default box is 10 × 10 × 10 world units, centered on the renderer's origin. It restricts baked points to the room of interest; check its coverage for large, offset, or non-metric scenes.
 
-Auto Flatness runs only when Bake is clicked, using the existing GPU export/readback and CPU median calculation. It adds no per-frame work during alignment. The displayed `Capture + Save` time excludes this preliminary Auto calculation.
+Auto Flatness runs when Bake is clicked. The displayed `Capture + Save` time covers filtering and saving; Auto Flatness is calculated beforehand.
 
 Recommended preprocessing steps:
 
@@ -228,13 +220,13 @@ Recommended preprocessing steps:
 5. Inspect the baked point cloud; adjust the advanced filters and rebake only if relevant geometry is missing or unwanted background remains.
 6. Use that renderer as the `AllInOneRegistration` source with `Use Baked Data` enabled. Alignment Demo already has these references assigned for its existing `3dgs` object.
 
-If registration fails, inspect the source and target point clouds first. In most failed cases, the cause is one of the following:
+If registration fails, inspect the source and target point clouds for:
 
-- the source scale is not close to real-world scale;
-- the source includes too much background or skybox;
-- the source and target point clouds do not share enough overlap;
-- the source point cloud is too noisy for stable FPFH correspondences;
-- the TEASER++ voxel size or GICP/VGICP parameters are not appropriate for the scene scale.
+- a large source/target scale difference;
+- unwanted background or skybox points;
+- insufficient overlap;
+- noise affecting FPFH correspondences;
+- TEASER++ voxel size or GICP/VGICP settings that need adjusting for the scene scale.
 
 ## Choosing a Registration Target
 
@@ -244,7 +236,7 @@ The toolkit supports three target-capture workflows:
 - **Real-time depth scan and align:** capture target points and align the reconstruction in the same scene and session.
 - **Quest 3 built-in environment setup:** complete `Settings > Environment Setup > Space Setup` directly on the headset. Quest assists with scanning the room, and the toolkit uses the resulting scene mesh without a separate toolkit depth scan. See [Meta's official assisted Space Setup guide](https://www.meta.com/help/quest/853707093070890/).
 
-These workflows map to four `Target Format` modes in `AllInOneRegistration`. For the built-in Quest environment setup workflow, `effectMesh` and the legacy `roomMesh` mode serve the same purpose: using the headset's captured scene mesh as the target. They are separate implementation options for current and older Meta scene components, rather than separate capture workflows.
+These workflows map to four `Target Format` modes in `AllInOneRegistration`. Quest environment setup uses `effectMesh`, or the legacy `roomMesh` option for older Meta scene components.
 
 `preScan` and `realTimeScan` use the same underlying target-generation and registration path: the Quest Environment Depth scanner produces a point cloud, which is then aligned with the reconstructed source through the same TEASER/GICP pipeline. The difference is how the workflow is organized. `preScan` saves the scan and anchor for a later alignment session, while `realTimeScan` passes the scanner points directly to alignment in the same scene and session.
 
@@ -265,7 +257,7 @@ Newly added `AllInOneRegistration` components still start with `Align`, `effectM
 
 ### Quest Environment Setup Workflow
 
-Use this workflow to capture the room through Quest's own environment setup and use its scene mesh as the registration target. The steps below use the current `effectMesh` mode; `roomMesh` is the legacy implementation of this workflow. Registration accuracy depends on the accuracy, coverage, and geometric detail of the headset's captured mesh.
+Capture the room through Quest's environment setup, then use its global scene mesh as the `effectMesh` registration target.
 
 1. Complete `Settings > Environment Setup > Space Setup` directly on the Quest headset, following [Meta's official assisted Space Setup guide](https://www.meta.com/help/quest/853707093070890/).
 2. Open `Assets/Scenes/Alignment Demo.unity`.
@@ -294,15 +286,15 @@ This workflow avoids a separate toolkit depth scan by using the headset's captur
 
 Both included scenes use `Scan Interval = 0.1` seconds: holding X runs one scan, waits 0.1 seconds, and repeats while X remains held (roughly at most 10 scans/second at normal time scale; scan time and frame scheduling lower the actual rate). Repeated presses share the same scan coroutine rather than starting parallel scans. Very rapid taps may not each produce a separate scan.
 
-At the scene preset `Density = high (128)`, each scan synchronously calls raycast 128 × 128 = **16,384 times** before yielding. Keyframe selection happens after capture, so its 0.35-second minimum interval does not throttle this work. Increasing `Scan Interval` reduces how often this work runs; reducing `Density` reduces work per scan. Neither guarantees a particular frame rate, and no new scan-time benchmark has been performed.
+At the scene preset `Density = high (128)`, each scan synchronously calls raycast 128 × 128 = **16,384 times** before yielding. Keyframe selection happens after capture, so its 0.35-second minimum interval does not throttle this work. Increase `Scan Interval` to scan less frequently, or reduce `Density` to lower the work per scan.
 
-In the current tested setup with Meta Horizon Link `208.0.0.84.535`, GPU utilization can reach approximately **90% while Environment Depth scanning is active**, causing frame drops during target point-cloud capture. This may be a Meta Depth API/runtime performance issue; the root cause has not been isolated.
+With Meta Horizon Link `208.0.0.84.535`, we observed GPU utilization reaching approximately **90% during Environment Depth scanning**, with frame drops during target capture. We suspect a Meta Depth API/runtime issue.
 
 In the included Alignment Demo, pressing **Y** to finish target capture and begin registration automatically deactivates the scanner and its `EnvironmentDepthManager`, shutting down the Depth API. The scan-related slowdown was no longer observed during subsequent alignment and visual comparison in this setup. Pressing **X** to resume scanning reactivates depth capture and may bring back the slowdown. Loading a saved Pre-Scan target for alignment does not require active depth capture.
 
 ### Separated Workflow: Pre-Scan / Quest 3 Scanner
 
-This workflow uses the same Environment Depth point-cloud target and registration pipeline as `realTimeScan`, but separates scanning from alignment. The Room Scanner saves the points and spatial anchor first, and the Alignment Demo loads them later. This makes the target reusable and keeps scanner collection separate from 3DGS rendering and alignment. Registration quality depends on scan coverage and settings rather than on choosing `preScan` instead of `realTimeScan`.
+Room Scanner saves the target points and spatial anchor; Alignment Demo loads them for registration. Use this workflow to reuse a saved room scan across alignment sessions.
 
 1. Open `Assets/Scenes/Room Scanner.unity`.
 2. Run the scene on Quest.
@@ -319,7 +311,7 @@ This workflow uses the same Environment Depth point-cloud target and registratio
 
 Both scenes use the same `Application.persistentDataPath` on the same PC. To keep multiple scans, change the filename pair in Room Scanner and enter the matching names in Alignment Demo; saving to an existing filename replaces that scan. Before stopping the scanner, wait for both `Successfully saved ... points to ...` and `Anchor UUID saved to ...` in the Console.
 
-If loading fails, check the filename pair and return to the scanned room so the anchor can localize. If alignment looks incorrect, press **Y** to realign. In current testing, some initially unsuccessful alignments became visually correct after several attempts; this is not guaranteed for every scene.
+If loading fails, check the filename pair and return to the scanned room so the anchor can localize. If alignment looks incorrect, press **Y** to realign. In our testing, several realignments resolved some initially unsuccessful alignments.
 
 The scanner stores:
 
@@ -333,7 +325,7 @@ This workflow integrates the same Environment Depth scanner and point-cloud regi
 1. Open `Assets/Scenes/Alignment Demo.unity`.
 2. Set `Target Format` to `realTimeScan`.
 3. Enable `Allow Repeated Alignment` if the user should be able to refine the result with additional X/Y cycles.
-4. The included demo scene already has its in-scene Quest scanner assigned to `Scanner Target`. No scanner setup is required unless you are building a custom scene.
+4. Keep the demo's assigned `Scanner Target`, or assign your scanner when building a custom scene.
 5. Run the scene on Quest.
 6. Press or hold `X` to start scanning, depending on the active scanner setup.
 7. Press `Y` to extract scanner points and trigger registration.
@@ -351,9 +343,11 @@ Tune these parameters first:
 - `Noise Bound Teaser`: increase this for noisier extracted points.
 - `Normal Radius Teaser` and `FPFH Radius Teaser`: set these relative to the physical scene scale.
 - `Estimate Scaling`: estimate the residual scale difference. Prepare the source near metric scale manually or, for complete high-overlap clouds, use the option below.
-- `Coarse Scale Alignment`: visible only with `Estimate Scaling` enabled. Approximate each cloud's geometric median and 90th-percentile radius from deterministic stratified samples, then pre-scale the temporary source buffer around its estimated center. The CPU preparation runs on a worker thread, reuses the DLL input buffer, and introduces no GPU transfer. TEASER++ still estimates residual scale; the final transform includes both scaling stages and the scale pivot. Logs report coarse scale, residual scale, combined scale/transformation matrix, and preparation time (including worker scheduling). Invalid preparation, an invalid scale, or a missing/non-finite native matrix aborts this optional path without changing the rendered source transform. Native non-convergence alone emits a warning and applies the finite candidate, matching the existing registration behavior; this does not certify alignment quality. Saving, if enabled, still saves the applied candidate.
-- Coarse scaling runs only before this component's first applied registration. Later realignments retain the current source scale and use the existing TEASER++/GICP path. An attempt rejected before applying its transform does not consume initialization; applying a candidate does, even if native convergence is false. Enabling coarse scaling after a registration was already applied does not rerun initialization. A fresh component/scene run resets this state; merely toggling the option or rescanning does not. This improves initialization but does not guarantee a correct result in one attempt.
-- `Coarse Scale Sample (%)`: visible when coarse scale alignment is enabled. Percentage of each cloud to sample, default 5%, range 0.1–100%. Each cloud uses `min(pointCount, max(3, ceil(pointCount * percentage / 100)))` points; 100% uses all points. There is no fixed point-count cap. The fixed-seed sampling picks one point per index stratum; it is a Monte Carlo approximation when subsampling, not spatially uniform sampling. Larger percentages increase CPU time and memory and can reduce sampling variation, but cannot correct density or coverage bias. The default is an engineering starting point, not a validated optimum. This setting controls how many points are sampled; the radius statistic remains the 90th percentile. This replaces the old sample-count setting; old count values are not converted into percentages, and the new field starts at 5%.
+- `Coarse Scale Alignment`: available when `Estimate Scaling` is enabled. Estimates an initial size ratio from each cloud's 90th-percentile radius about its approximate geometric median, then scales the source points before feature matching. TEASER++ estimates the remaining scale difference. Use this for complete clouds with high overlap.
+- Coarse scaling runs before the first applied registration in a scene session. Later **Y** realignments refine the current source pose through TEASER++/GICP. Restart the scene to initialize coarse scale again.
+- `Coarse Scale Sample (%)`: percentage of each cloud used for the estimate. New components default to 5%; Alignment Demo uses 20%. The range is 0.1–100%, with 100% using all points. Sampling uses a fixed seed and index strata. Higher percentages reduce sampling variation at greater CPU and memory cost; different coverage or point densities can still bias the size ratio.
+
+Coarse preparation runs on a CPU worker using the existing input buffer. Logs show the coarse, residual, and combined scales, the transformation matrix, and preparation time. Invalid scale or matrix data stops the coarse-scaling path before applying a transform. A finite native candidate is applied even when native convergence is false, and saved when saving is enabled; inspect the resulting pose and use **Y** to refine it.
 
 ### GICP/VGICP Fine Registration
 
@@ -395,26 +389,15 @@ Additional runtime functionality depends on Meta XR SDK, Meta MR Utility Kit, Un
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled copyright and license notices, including the native TEASER++, PCL, and LZ4 binaries. Package-manager dependencies remain subject to their own package licenses and terms.
 
-## Known Limitations
-
-- The native registration plugin is currently provided as Windows `x86_64` DLLs.
-- The repository does not include user-specific reconstructed scenes.
-- Large 3DGS files, meshes, point clouds, or native binaries may require Git LFS or external release assets.
-- Registration quality depends on overlap, scale consistency, target point-cloud or effect-mesh accuracy, source geometry quality, and parameter tuning.
-- Active Environment Depth scanning may cause high GPU utilization and frame drops in the tested Link runtime; see [Environment Depth Scanning Performance](#environment-depth-scanning-performance). The included scan-to-alignment handoff disables depth capture automatically.
-- The project may require scene-specific setup before it can be used as a turnkey application.
-
 ## Research Origins
 
-The toolkit originated in **[MR-Compare](https://github.com/changruizhu96/MR-Compare)**, a research system for spatially grounded comparison of reconstructed and physical environments. The toolkit starts from that implementation with a fresh repository history. The repositories have different roles: MR-Compare documents the research system; this repository maintains reusable Unity XR/3DGS workflows and future toolkit development.
+The toolkit builds on **[MR-Compare](https://github.com/changruizhu96/MR-Compare)**, extending its registration, rendering, and comparison tools for Unity XR development.
 
 **MR-Compare: A Mixed-Reality Framework for Spatially Grounded Visual Comparison of 3D Gaussian Splatting and Mesh Reconstructions with the Physical Environment**
 
 **IEEE ISMAR 2026 · TVCG Paper** · [Best Paper Award · Honorable Mention](https://www.ieeeismar.net/2026/awards/)
 
 [Research repository](https://github.com/changruizhu96/MR-Compare) · [Paper on arXiv](https://arxiv.org/abs/2607.20325) · [Project page and demo](https://changruizhu96.github.io/work/mr-compare/)
-
-The publication and award refer to MR-Compare, not to separate evaluations of later toolkit releases. The current toolkit remains a complete Unity project; a standalone UPM distribution is not provided.
 
 ## Citation and Acknowledgements
 
@@ -432,27 +415,10 @@ If this toolkit contributes to an academic publication, please cite its research
 }
 ```
 
-Please also acknowledge the upstream projects listed above and cite the reconstruction, registration, or MR systems used in your workflow. Citation is an academic request and is not an additional condition of the MIT License.
+Please also acknowledge the upstream projects and cite the reconstruction and registration methods used in your work.
 
 ## License
 
-Unity XR 3DGS Toolkit continues the MR-Compare codebase under the [MIT License](LICENSE). Copyright (c) 2026 Changrui Zhu.
+[MIT License](LICENSE). Copyright (c) 2026 Changrui Zhu. Retain the copyright and permission notice when redistributing the software.
 
-The license applies to the original MR Compare software and accompanying documentation in this repository, except where a file or directory carries a separate license or copyright notice.
-
-Under the MIT License, you may:
-
-- use the software for academic, research, educational, private, or commercial purposes;
-- copy, modify, merge, publish, and distribute the software;
-- sublicense or sell copies of the software; and
-- include the software in open-source or proprietary derivative work.
-
-When redistributing the software or a substantial portion of it, you must retain the original copyright notice and MIT permission notice. The software is provided **as is**, without warranty; see the full [LICENSE](LICENSE) text for the legally controlling terms.
-
-The MIT License does not replace or override licenses for third-party material. In particular:
-
-- the modified Unity Gaussian Splatting package remains subject to its bundled [MIT license](Packages/package/LICENSE.md);
-- the adapted [Depth Scanner Project](https://github.com/Appletea0673/Depth-Scanner-Project) is distributed under its upstream MIT license; and
-- Meta XR SDK, Meta MR Utility Kit, Unity packages, native registration libraries, and other dependencies remain subject to their respective licenses and terms.
-
-User-supplied datasets, scans, 3DGS assets, meshes, model checkpoints, and other imported content are not covered by the MR Compare license. Users are responsible for ensuring that they have permission to use and redistribute those materials.
+Third-party components retain their respective licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the [Unity Gaussian Splatting package license](Packages/package/LICENSE.md).
