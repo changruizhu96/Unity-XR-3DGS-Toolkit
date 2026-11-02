@@ -143,7 +143,7 @@ Unity XR 3DGS Toolkit is a reusable Unity research toolkit rather than a finishe
 - Unity `6000.0.76f1`
 - Meta Quest 3 or compatible Meta XR device
 - Meta Quest Link-based development and testing workflow
-- Current tested Meta Quest Link version: `v203` (previously tested with `v77`, `v85`, and `v201`)
+- Current tested PC runtime: **Meta Horizon Link `208.0.0.84.535`** (previous Meta Quest Link versions tested: `v77`, `v85`, `v201`, and `v203`)
 - Meta XR Core SDK `203.0.0`
 - Meta MR Utility Kit `203.0.0`
 - Meta XR Interaction SDK OVR `201.0.0`
@@ -284,6 +284,12 @@ Use this workflow when you want the fewest setup operations and are comfortable 
 
 This workflow avoids a separate Environment Depth scan, which makes it the quickest route to registration.
 
+### Environment Depth Scanning Performance
+
+In the current tested setup with Meta Horizon Link `208.0.0.84.535`, GPU utilization can reach approximately **90% while Environment Depth scanning is active**, causing frame drops during target point-cloud capture. This may be a Meta Depth API/runtime performance issue; the root cause has not been isolated.
+
+In the included Alignment Demo, pressing **Y** to finish target capture and begin registration automatically deactivates the scanner and its `EnvironmentDepthManager`, shutting down the Depth API. The scan-related slowdown was no longer observed during subsequent alignment and visual comparison in this setup. Pressing **X** to resume scanning reactivates depth capture and may bring back the slowdown. Loading a saved Pre-Scan target for alignment does not require active depth capture.
+
 ### Separated Workflow: Pre-Scan / Quest 3 Scanner
 
 This workflow uses the same Environment Depth point-cloud target and registration pipeline as `realTimeScan`, but separates scanning from alignment. The Room Scanner saves the points and spatial anchor first, and the Alignment Demo loads them later. This makes the target reusable and keeps scanner collection separate from 3DGS rendering and alignment. Registration quality depends on scan coverage and settings rather than on choosing `preScan` instead of `realTimeScan`.
@@ -381,6 +387,7 @@ See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled copyright and l
 - The repository does not include user-specific reconstructed scenes.
 - Large 3DGS files, meshes, point clouds, or native binaries may require Git LFS or external release assets.
 - Registration quality depends on overlap, scale consistency, target point-cloud or effect-mesh accuracy, source geometry quality, and parameter tuning.
+- Active Environment Depth scanning may cause high GPU utilization and frame drops in the tested Link runtime; see [Environment Depth Scanning Performance](#environment-depth-scanning-performance). The included scan-to-alignment handoff disables depth capture automatically.
 - The project may require scene-specific setup before it can be used as a turnkey application.
 
 ## Research Origins
