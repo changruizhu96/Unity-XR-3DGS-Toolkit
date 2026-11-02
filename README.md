@@ -6,58 +6,21 @@
 [![Meta Quest](https://img.shields.io/badge/Meta%20Quest-3-0467DF.svg?logo=meta)](https://www.meta.com/quest/quest-3/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Build Unity XR experiences with **3D Gaussian Splatting (3DGS)**. This self-contained Unity project brings together splat import, XR rendering, editor tools, example scenes, and interaction components. Start with a **VR 3DGS viewer**, integrate splats into your own XR scene, or extend the same content into **mixed reality** with physical-world registration, passthrough comparison, and spatial anchors.
+Import and render **3D Gaussian Splatting (3DGS)** in Unity XR, or align reconstructions with the physical world for mixed reality. This is a complete Unity project, tested on **Windows PC + Meta Quest Link**.
 
-Originally developed for **[MR-Compare](https://github.com/changruizhu96/MR-Compare)**, this is the **actively maintained toolkit repository** for future updates and new features. You do not need to use the paper's comparison workflow to use 3DGS in VR. For the research system, evaluation, and publication, see [Research Origins](#research-origins).
-
-**Start here:** [Demo video](#demo-video) · [Get the Project](#get-the-project) · [VR Quick Start](#vr-quick-start) · [MR Registration](#mr-registration) · [Integration Guide](#integration-guide) · [Requirements](#requirements)
-
-- **Project or package?** A complete Unity project with integrated packages and example scenes, not a standalone UPM-installable toolkit package.
-- **Does it require a PC?** Windows PC + Meta Quest Link is the tested workflow. MR registration uses Windows `x86_64` native libraries and does not run entirely on the headset.
-- **Can I use VR without MR registration?** Yes. Import and render 3DGS in an XR scene without physical-world scanning or registration.
+[VR Quick Start](#vr-quick-start) · [MR Quick Start](#mr-registration) · [Demo video](#demo-video) · [Features](#what-is-included) · [Requirements](#requirements)
 
 ## Demo Video
 
-See the MR-Compare application that the toolkit grew out of: reconstructions registered to a physical office, switching between reconstruction and live passthrough, and spatially grounded comparison with the 3D Slider. This demonstrates the MR comparison workflow; physical-world registration is not required for VR-only use.
+MR-Compare demo: a reconstruction aligned with a physical office and compared against passthrough.
 
 https://github.com/user-attachments/assets/d06a137d-d7df-4e2e-936a-07cc4ce427a4
 
 [Original video (MP4, approximately 103 MB)](https://changruizhu96.github.io/media/mr-compare/office-demo.mp4) · [Watch on the project page](https://changruizhu96.github.io/work/mr-compare/#demo)
 
-Play the video directly above. The recording shows the MR-Compare research application, not a separate evaluation of later toolkit releases.
-
-## Use the toolkit in two ways
-
-| Unity XR + 3DGS (VR) | Spatially grounded 3DGS (MR) |
-| --- | --- |
-| Import and render 3DGS assets in Unity XR | Keep the complete Unity XR rendering workflow |
-| Place splats in VR scenes and application logic | Register 3DGS or meshes to the physical environment |
-| View and interact with splats through an XR camera | Use depth scans or Quest's built-in environment setup as registration targets |
-| Use the project without physical-world registration | Persist alignment with Quest coordinates or spatial anchors |
-| Build custom VR interactions around `GaussianSplatRenderer` | Compare registered content with passthrough using Mini-Window, 3D Slider, or Switch-back |
-
-## What is included
-
-### Unity XR + 3DGS
-
-- A modified [UnityGaussianSplatting](https://github.com/aras-p/UnityGaussianSplatting) package with XR rendering support.
-- Unity tools for creating `GaussianSplatAsset` data and rendering it with `GaussianSplatRenderer`.
-- Support for placing 3DGS content in OpenXR/Meta Quest scenes and integrating it with application logic.
-- Editor tools for transforming, inspecting, filtering, and preparing Gaussian content.
-
-### Extending 3DGS into mixed reality
-
-**Scale-aware registration for non-metric reconstructions:** enable `Estimate Scaling` to align 3DGS or mesh sources expressed in arbitrary units to a metric physical-world target. The registration estimates a uniform scale together with rotation and translation—a **Sim(3) similarity transform**. Optional one-time coarse scale initialization helps prepare complete, high-overlap clouds for feature matching. Alignment quality still depends on geometry, overlap, and parameter settings.
-
-- Source-point extraction from 3DGS centres or Unity meshes.
-- Three ways to capture the physical target: reusable depth pre-scans, real-time depth scanning, or Quest's built-in environment setup.
-- FPFH/TEASER++ coarse registration followed by GICP or VGICP refinement.
-- Alignment save/load support using spatial anchors or the headset's scene mesh.
-- Mini-Window, 3D Slider, and Switch-back interaction modes for comparing reconstructions with live passthrough.
-
 ## Get the Project
 
-Install Git LFS before cloning so the bundled images and native libraries are downloaded:
+Install Git LFS, then clone:
 
 ```bash
 git lfs install
@@ -66,7 +29,7 @@ cd Unity-XR-3DGS-Toolkit
 git lfs pull
 ```
 
-Open the repository root in Unity `6000.0.76f1`, let the package manager restore dependencies, and check the [requirements](#requirements). Choose the VR-only or MR registration path below. This is a complete project to open and adapt, not a single package to install through a UPM Git URL.
+Open the project in **Unity 6000.0.76f1** and wait for packages to restore. Check the [requirements](#requirements), then follow one path below.
 
 ## Quick Start
 
@@ -74,43 +37,25 @@ Open the repository root in Unity `6000.0.76f1`, let the package manager restore
 
 ### Option A — Use 3DGS in VR
 
-1. Follow [Get the Project](#get-the-project) and open it in Unity `6000.0.76f1`.
-2. Let Unity restore the dependencies in `Packages/manifest.json`.
-3. Open `Tools > Gaussian Splats > Create GaussianSplatAsset` and import your 3DGS source.
-4. For VR-only rendering, select the asset quality appropriate for your application. Use `Very High` if the same asset will later be used for MR registration, because registration reads the uncompressed Gaussian positions.
-5. Add a `GaussianSplatRenderer` to an object in an XR-enabled scene and assign the created asset.
-6. Position the object as normal Unity scene content and run the project through the configured OpenXR/Meta Quest workflow.
-7. Integrate the renderer with your own XR interaction and application logic as needed. Physical-world scanning and registration are not required for VR-only use.
+1. Connect your Quest through Meta Horizon Link.
+2. Open `Tools > Gaussian Splats > Create GaussianSplatAsset` and import your 3DGS.
+3. Add a `GaussianSplatRenderer` to an object in your XR scene and assign the created asset.
+4. Position the object and enter Play Mode. No room scan or registration is needed.
 
 <a id="mr-registration"></a>
 
 ### Option B — Register 3DGS to the physical world in MR
 
-**Prerequisite: an indoor, single-room scene.** This Quick Start and its default filtering preset assume your reconstruction and depth scan cover the same room with high overlap. The default selection ROI is a 10 × 10 × 10 Unity-world-unit box centered on the source object's origin. Check that the room fits inside it before baking, especially for non-metric reconstructions; adjust `ROI Size` or `Center Offset` under `Advanced Bake Settings` if needed. Later scale estimation cannot recover points already removed by the ROI.
+**Prerequisite: an indoor, single-room scene.** Bring your own [3DGS reconstruction](#source-preparation-routes) of the room you will scan. Metric scale matters for MR; the demo enables `Estimate Scaling` for non-metric sources, including end-to-end exports such as Luma AI.
 
-**Metric scale is essential for MR registration:** the reconstruction must match the physical environment's dimensions, position, and orientation. The depth scan provides a metric target; enable `Estimate Scaling` if your 3DGS uses arbitrary units.
+1. **Connect Quest through Meta Horizon Link.** Enable spatial data access in the PC app's Developer settings and accept the headset's spatial-data permission prompt.
+2. **Scan:** open `Assets/Scenes/Room Scanner.unity`, enter Play Mode, and hold the left controller's **X** while moving around the room. Release X to pause.
+3. **Save:** press the right controller's **B**. Wait for both point-cloud and anchor UUID save confirmations in the Console, then stop Play Mode.
+4. **Import:** open `Assets/Scenes/Alignment Demo.unity`. Use `Tools > Gaussian Splats > Create GaussianSplatAsset` with `Quality = Very High`, then assign the asset to the existing `3dgs` object's renderer.
+5. **Bake:** under `Baking & Debug`, click **Apply Default Settings**, check that the ROI covers the room, then click **Bake & Generate Asset** and wait for completion. [ROI and filter details](#3dgs-point-cloud-preprocessing).
+6. **Align:** enter Play Mode in the scanned room. The saved scan loads and alignment starts automatically. If it looks incorrect, press the left controller's **Y** to realign; multiple attempts may be needed.
 
-**Recommended first run: scan in `Room Scanner.unity`, press B to save, then run `Alignment Demo.unity`.** Both scenes are included: the scanner saves to the filenames the aligner already loads, and Alignment Demo is preset to `preScan`. Once your own 3DGS is imported and baked, no target-mode or filename changes are needed. See [Source Preparation Routes](#source-preparation-routes) if you have not created a reconstruction of the same physical environment yet.
-
-**A. Scan and save the physical target**
-
-1. Follow [Get the Project](#get-the-project), open the project in Unity `6000.0.76f1`, and connect your Quest through Meta Horizon Link. Enable spatial data access over Link in the PC app's Developer settings and accept the headset's spatial-data permission prompt when requested.
-2. Open `Assets/Scenes/Room Scanner.unity`. Select `Quest Scanner`, keep `Scanner Mode` set to `Scan`, and leave the existing camera, raycast, anchor, and visualization references assigned. Under `Save Files`, keep `Point Cloud File` as `alignment_scan.bytes` and `Anchor Uuid File` as `alignment_scan.txt`.
-3. Enter Unity Play Mode. In the headset, **hold the left controller's X button** while looking around and moving through the area represented by your reconstruction. Check that the point-cloud visualization covers the room; release X to pause and hold it again to collect more points.
-4. **Press the right controller's B button** to create the spatial anchor and save the scan. Wait for both `Successfully saved ... points to ...` and `Anchor UUID saved to ...` in the Unity Console before stopping Play Mode. Saving is triggered by B, not by releasing X.
-
-The files are written automatically to `Application.persistentDataPath`; no manual export or copying is needed when both scenes run from this Unity project on the same PC. Keeping the default filenames is sufficient. To keep multiple scans, choose a different pair of filenames under `Save Files` and use that same pair in the aligner; saving to an existing filename replaces that scan file.
-
-**B. Load the target and align your 3DGS**
-
-1. Stop Play Mode and open `Assets/Scenes/Alignment Demo.unity`.
-2. Open `Tools > Gaussian Splats > Create GaussianSplatAsset`, import your 3DGS, and assign the created asset to the existing `3dgs` object's `Gaussian Splat Render` component. `Quality` defaults to `Very High` on first use; if the editor remembers a previous choice, select `Very High` for registration. The repository does not include the reconstruction shown in the demo video.
-3. On that component, go to `Baking & Debug`, click **Apply Default Settings**, then **Bake & Generate Asset**. The preset enables Auto `Max Flatness`, `Density Filter`, and `Enable Selection ROI`. Applying defaults only sets parameters; Bake calculates Flatness from the current splats and generates the baked data, assigning it to the renderer automatically. Wait for the bake to finish. The indoor single-room ROI prerequisite above applies; make any necessary ROI adjustment after applying defaults and before baking.
-4. Leave the `Aligner` object's preset settings in place: `Align`, `preScan`, `GaussianSplating`, and `Use Baked Data`. Its `Gaussian Source Renderer` already points to the existing `3dgs` object, and the scan filenames, anchor holder, point-cloud VFX, and `SpatialAnchor` save reference are assigned. Only change the renderer reference if you created a different source object, or the filenames if you renamed the scan in stage A.
-5. Enter Play Mode in the scanned physical space. The aligner automatically loads `alignment_scan.bytes` and `alignment_scan.txt`, then runs the first alignment once the anchor and points are ready. The demo already enables TEASER++ scale estimation, one-time coarse scale initialization with 20% sampling, GICP refinement, and repeated alignment. You do not need to scan again or press Y to start this first pass. If the Console reports missing files or an anchor-localization failure, check the saved filename pair and return to the scanned space before proceeding.
-6. Inspect the reconstruction against passthrough. If it is not aligned correctly, **press the left controller's Y button** to realign using the current source transform and the retained target. In current testing, some initially unsuccessful alignments became visually correct after several realignments; this is not a guarantee for every scene.
-
-This is the recommended two-scene path. [Choosing a Registration Target](#choosing-a-registration-target) explains the other supported workflows, including same-session scanning and Quest's built-in environment setup. See [Environment Depth Scanning Performance](#environment-depth-scanning-performance) for the observed scan-time GPU load.
+Keep the supplied scene settings: scan filenames, target mode, and references are already configured. No file copying is needed between these scenes on the same PC. For other target workflows or troubleshooting, see [Detailed Usage](#detailed-usage).
 
 ### Visual Comparison Controls
 
@@ -123,6 +68,25 @@ After alignment, use the visual comparison modes to inspect the registered recon
    - **Switch-back:** press the right controller `B` button to switch the reconstruction display on or off.
 
 The comparison modes can target either a `GaussianSplatRenderer` or a standard `MeshRenderer`.
+
+## What is included
+
+### Unity XR + 3DGS
+
+- A modified [UnityGaussianSplatting](https://github.com/aras-p/UnityGaussianSplatting) package with XR rendering support.
+- Unity tools for creating `GaussianSplatAsset` data and rendering it with `GaussianSplatRenderer`.
+- Support for placing 3DGS content in OpenXR/Meta Quest scenes and integrating it with application logic.
+- Editor tools for transforming, inspecting, filtering, and preparing Gaussian content.
+
+### Extending 3DGS into mixed reality
+
+**Non-metric 3DGS and meshes are supported:** `Estimate Scaling` estimates uniform scale, rotation, and translation—a **Sim(3) similarity transform**. Optional coarse scale initialization prepares complete, high-overlap clouds for matching.
+
+- Source-point extraction from 3DGS centres or Unity meshes.
+- Three ways to capture the physical target: reusable depth pre-scans, real-time depth scanning, or Quest's built-in environment setup.
+- FPFH/TEASER++ coarse registration followed by GICP or VGICP refinement.
+- Alignment save/load support using spatial anchors or the headset's scene mesh.
+- Mini-Window, 3D Slider, and Switch-back interaction modes for comparing reconstructions with live passthrough.
 
 ## Integration Guide
 
@@ -338,6 +302,10 @@ This workflow uses the same Environment Depth point-cloud target and registratio
 10. Configure the source type and source object.
 11. Use `SpatialAnchor` as the alignment reference mode if you want the result to persist relative to the saved scan anchor.
 12. Run registration.
+
+Both scenes use the same `Application.persistentDataPath` on the same PC. To keep multiple scans, change the filename pair in Room Scanner and enter the matching names in Alignment Demo; saving to an existing filename replaces that scan. Before stopping the scanner, wait for both `Successfully saved ... points to ...` and `Anchor UUID saved to ...` in the Console.
+
+If loading fails, check the filename pair and return to the scanned room so the anchor can localize. If alignment looks incorrect, press **Y** to realign. In current testing, some initially unsuccessful alignments became visually correct after several attempts; this is not guaranteed for every scene.
 
 The scanner stores:
 
