@@ -20,11 +20,11 @@ Originally developed for **[MR-Compare](https://github.com/changruizhu96/MR-Comp
 
 See the MR-Compare application that the toolkit grew out of: reconstructions registered to a physical office, switching between reconstruction and live passthrough, and spatially grounded comparison with the 3D Slider. This demonstrates the MR comparison workflow; physical-world registration is not required for VR-only use.
 
-[![MR comparison preview — click to watch the office demo](docs/alignment-result-3d-slider.png)](https://changruizhu96.github.io/media/mr-compare/office-demo.mp4)
+https://github.com/user-attachments/assets/d06a137d-d7df-4e2e-936a-07cc4ce427a4
 
-**[Watch the demo video (MP4, approximately 103 MB)](https://changruizhu96.github.io/media/mr-compare/office-demo.mp4)** · [Watch on the project page](https://changruizhu96.github.io/work/mr-compare/#demo)
+[Original video (MP4, approximately 103 MB)](https://changruizhu96.github.io/media/mr-compare/office-demo.mp4) · [Watch on the project page](https://changruizhu96.github.io/work/mr-compare/#demo)
 
-The preview opens the video hosted on the existing project website. The recording shows the MR-Compare research application, not a separate evaluation of later toolkit releases.
+Play the video directly above. The recording shows the MR-Compare research application, not a separate evaluation of later toolkit releases.
 
 ## Use the toolkit in two ways
 
