@@ -47,6 +47,8 @@ Play the video directly above. The recording shows the MR-Compare research appli
 
 ### Extending 3DGS into mixed reality
 
+**Scale-aware registration for non-metric reconstructions:** enable `Estimate Scaling` to align 3DGS or mesh sources expressed in arbitrary units to a metric physical-world target. The registration estimates a uniform scale together with rotation and translation—a **Sim(3) similarity transform**. Optional one-time coarse scale initialization helps prepare complete, high-overlap clouds for feature matching. Alignment quality still depends on geometry, overlap, and parameter settings.
+
 - Source-point extraction from 3DGS centres or Unity meshes.
 - Three ways to capture the physical target: reusable depth pre-scans, real-time depth scanning, or Quest's built-in environment setup.
 - FPFH/TEASER++ coarse registration followed by GICP or VGICP refinement.
