@@ -96,7 +96,7 @@ public class AllInOneRegistration : MonoBehaviour
 
     [SerializeField] private bool estimateScaling = false; // Added scaling parameter
     [SerializeField, Tooltip("Pre-adjust source scale using the 90th-percentile radius before the first applied registration. Later realignments skip this step. Use for complete, high-overlap scenes; TEASER++ still estimates residual scale.")]
-    private bool coarseScaleAlignment = false;
+    private bool coarseScaleAlignment = true;
     [SerializeField, Range(0.1f, 100f), Tooltip("Percentage of each cloud sampled for coarse scale estimation. Uses at least three points; 100% uses all points. Larger percentages increase CPU time and memory use. This is separate from the fixed 90th-percentile radius statistic.")]
     private float coarseScaleSamplePercent = 5f;
     [SerializeField] private float voxelSizeTeaser = 0.1f; // For TEASER++ input point cloud

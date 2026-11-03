@@ -54,7 +54,9 @@ Open the project in **Unity 6000.0.76f1** and wait for packages to restore. Chec
 
 - **Recommended fastest start — [Scaniverse](https://scaniverse.com/):** scan the room on your phone, generate a [metric-scale Gaussian splat](https://www.nianticspatial.com/products/reconstruct), and export it for Unity. This is our recommended first-run route, with no separate desktop training pipeline to set up.
 - **For higher visual quality — [RealityScan](https://www.realityscan.com/download) + desktop 3DGS:** capture high-quality photos, align them in RealityScan, set metric scale using [known distances](https://rshelp.capturingreality.com/en-US/tutorials/scaling.htm), then train 3DGS from the calibrated cameras and images. Preserve that scale during export; this route gives you more control over capture and training.
-- **Already using Luma AI or another non-metric end-to-end tool?** Import its 3DGS and enable `AllInOneRegistration > Estimate Scaling`. Alignment Demo already enables this option; inspect the result and use **Y** to realign if needed.
+- **Already using Luma AI or another non-metric end-to-end tool?** Import its 3DGS and enable `AllInOneRegistration > Estimate Scaling`. `Coarse Scale Alignment` is checked by default and becomes active with scale estimation; uncheck it for partial scans or substantially different scene coverage. Inspect the result and use **Y** to realign if needed.
+
+For metric-scale reconstructions, leave `Estimate Scaling` off (the default in new components and Alignment Demo) to preserve the source scale and estimate only rotation and translation. Keep the correct scale when importing into Unity.
 
 **Then scan and align with the included scenes:**
 
@@ -194,7 +196,7 @@ The most important requirement for 3DGS registration is scale. The 3DGS scene sh
 
 For a desktop 3DGS handoff, preserve RealityScan's calibrated camera poses and metric scale when moving the images into a dedicated generator such as LichtFeld Studio, Nerfstudio's gsplat workflow, or Postshot.
 
-If the imported 3DGS scale is inaccurate, first resize the source to a roughly correct scale in Unity, then enable TEASER++ `Estimate Scaling`. Alternatively, when the filtered source and metric target both cover the same complete scene with high overlap, enable `Coarse Scale Alignment` under `Estimate Scaling` to estimate an initial size ratio before native downsampling and feature matching. Newly added components leave coarse scaling off; the included Alignment Demo enables both scale options with 20% sampling. Partial scans and strongly different sampling densities can bias this ratio; retain manual scale preparation for those cases.
+For a correctly imported metric-scale reconstruction, leave `Estimate Scaling` off to preserve its scale. For non-metric input, enable it to estimate scale along with rotation and translation. `Coarse Scale Alignment` is checked by default in new components and Alignment Demo, but only takes effect when `Estimate Scaling` is enabled. It estimates an initial size ratio before native downsampling and feature matching when the filtered source and metric target cover the same complete scene with high overlap. Partial scans, substantially different coverage, and strongly different sampling densities can bias this ratio; uncheck coarse scaling and prepare the source near metric scale manually in those cases. New components use 5% sampling; Alignment Demo uses 20%.
 
 ### 3DGS Point Cloud Preprocessing
 
@@ -342,8 +344,8 @@ Tune these parameters first:
 - `Voxel Size Teaser`: larger values improve robustness and speed at the cost of detail.
 - `Noise Bound Teaser`: increase this for noisier extracted points.
 - `Normal Radius Teaser` and `FPFH Radius Teaser`: set these relative to the physical scene scale.
-- `Estimate Scaling`: estimate the residual scale difference. Prepare the source near metric scale manually or, for complete high-overlap clouds, use the option below.
-- `Coarse Scale Alignment`: available when `Estimate Scaling` is enabled. Estimates an initial size ratio from each cloud's 90th-percentile radius about its approximate geometric median, then scales the source points before feature matching. TEASER++ estimates the remaining scale difference. Use this for complete clouds with high overlap.
+- `Estimate Scaling`: off by default in new components and Alignment Demo. Leave it off for correctly scaled metric input; enable it for non-metric input to estimate the residual scale difference.
+- `Coarse Scale Alignment`: checked by default, but only active when `Estimate Scaling` is enabled. Estimates an initial size ratio from each cloud's 90th-percentile radius about its approximate geometric median, then scales the source points before feature matching. TEASER++ estimates the remaining scale difference. Use this for complete clouds with high overlap; uncheck it for partial scans or substantially different coverage and prepare the source near metric scale manually.
 - Coarse scaling runs before the first applied registration in a scene session. Later **Y** realignments refine the current source pose through TEASER++/GICP. Restart the scene to initialize coarse scale again.
 - `Coarse Scale Sample (%)`: percentage of each cloud used for the estimate. New components default to 5%; Alignment Demo uses 20%. The range is 0.1–100%, with 100% using all points. Sampling uses a fixed seed and index strata. Higher percentages reduce sampling variation at greater CPU and memory cost; different coverage or point densities can still bias the size ratio.
 

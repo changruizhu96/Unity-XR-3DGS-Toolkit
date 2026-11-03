@@ -3627,7 +3627,7 @@ MonoBehaviour:
   pointCloudVFX: {fileID: 1813918185}
   scannerTarget: {fileID: 1696225539}
   allowRepeatedAlignment: 1
-  estimateScaling: 1
+  estimateScaling: 0
   coarseScaleAlignment: 1
   coarseScaleSamplePercent: 20
   voxelSizeTeaser: 0.1
