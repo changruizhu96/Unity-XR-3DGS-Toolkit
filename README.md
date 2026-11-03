@@ -56,7 +56,7 @@ Open the project in **Unity 6000.0.76f1** and wait for packages to restore. Chec
 - **For higher visual quality — [RealityScan](https://www.realityscan.com/download) + desktop 3DGS:** capture high-quality photos, align them in RealityScan, set metric scale using [known distances](https://rshelp.capturingreality.com/en-US/tutorials/scaling.htm), then train 3DGS from the calibrated cameras and images. Preserve that scale during export; this route gives you more control over capture and training.
 - **Already using Luma AI or another non-metric end-to-end tool?** Import its 3DGS and enable `AllInOneRegistration > Estimate Scaling`. `Coarse Scale Alignment` is checked by default and becomes active with scale estimation; uncheck it for partial scans or substantially different scene coverage. Inspect the result and use **Y** to realign if needed.
 
-For metric-scale reconstructions, leave `Estimate Scaling` off (the default in new components and Alignment Demo) to preserve the source scale and estimate only rotation and translation. Keep the correct scale when importing into Unity.
+For metric-scale reconstructions, leave `Estimate Scaling` disabled to preserve the source scale. It is disabled by default. Keep the correct scale when importing into Unity.
 
 **Then scan and align with the included scenes:**
 
@@ -196,7 +196,7 @@ The most important requirement for 3DGS registration is scale. The 3DGS scene sh
 
 For a desktop 3DGS handoff, preserve RealityScan's calibrated camera poses and metric scale when moving the images into a dedicated generator such as LichtFeld Studio, Nerfstudio's gsplat workflow, or Postshot.
 
-For a correctly imported metric-scale reconstruction, leave `Estimate Scaling` off to preserve its scale. For non-metric input, enable it to estimate scale along with rotation and translation. `Coarse Scale Alignment` is checked by default in new components and Alignment Demo, but only takes effect when `Estimate Scaling` is enabled. It estimates an initial size ratio before native downsampling and feature matching when the filtered source and metric target cover the same complete scene with high overlap. Partial scans, substantially different coverage, and strongly different sampling densities can bias this ratio; uncheck coarse scaling and prepare the source near metric scale manually in those cases. New components use 5% sampling; Alignment Demo uses 20%.
+Keep `Estimate Scaling` disabled for metric-scale input; enable it for non-metric input to estimate scale along with rotation and translation. `Coarse Scale Alignment` is checked by default, but only takes effect when `Estimate Scaling` is enabled. It estimates an initial size ratio before native downsampling and feature matching when the filtered source and metric target cover the same complete scene with high overlap. Partial scans, substantially different coverage, and strongly different sampling densities can bias this ratio; uncheck coarse scaling and prepare the source near metric scale manually in those cases. See `Coarse Scale Sample (%)` below for sampling settings.
 
 ### 3DGS Point Cloud Preprocessing
 
@@ -209,7 +209,7 @@ Important settings:
 - `Apply Default Settings`: restores the indoor single-room bake preset without starting a bake. It enables Auto Flatness, density filtering, and ROI; resets minimum opacity to `0`, grid spacing to `0.05`, minimum neighbors to `2`, and coordinate normalization to off; and restores a 10 × 10 × 10 box centered on the renderer's origin, with no center override or offset. Apply it before any scene-specific adjustments.
 - `Max Flatness`: defaults to Auto. Clicking Bake calculates the median splat scale ratio before filtering. Open `Advanced Bake Settings` and disable `Auto Max Flatness` to enter a manual threshold.
 - `Density Filter`: defaults to on, with grid spacing `0.05` and minimum neighbors `2`. Adjust these under `Advanced Bake Settings` to suit the source's units and point density.
-- `Enable Selection ROI`: defaults to on for new renderers and is enabled in Alignment Demo; existing components retain their serialized choice. The default box is 10 × 10 × 10 world units, centered on the renderer's origin. It restricts baked points to the room of interest; check its coverage for large, offset, or non-metric scenes.
+- `Enable Selection ROI`: enabled by default. It restricts baked points to the room of interest using a 10 × 10 × 10 world-unit box centered on the renderer's origin. Check its coverage for large, offset, or non-metric scenes. To restore this setup in an existing scene, click **Apply Default Settings** before adjusting the box.
 
 Auto Flatness runs when Bake is clicked. The displayed `Capture + Save` time covers filtering and saving; Auto Flatness is calculated beforehand.
 
@@ -246,7 +246,7 @@ When `Allow Repeated Alignment` is enabled, pressing `Y` after the initial align
 
 The included **Alignment Demo is preset to `preScan`** with `alignment_scan.bytes` / `alignment_scan.txt`, the scan anchor and point-cloud VFX references, `SpatialAnchor` alignment saving, and the existing `3dgs` source renderer. It is ready to load the output of Room Scanner once you import and bake your own source. Its embedded scanner and Meta scene references remain available if you explicitly switch to another target mode.
 
-Newly added `AllInOneRegistration` components still start with `Align`, `effectMesh`, `GaussianSplating`, TEASER rough alignment, GICP refinement, baked source data, repeated alignment enabled, and automatic alignment saving disabled. Custom scenes require their own target references; use the included demo for the prepared Pre-Scan workflow.
+For custom scenes, the `AllInOneRegistration` defaults are `Align`, `effectMesh`, `GaussianSplating`, TEASER rough alignment, GICP refinement, baked source data, repeated alignment enabled, and automatic alignment saving disabled. Choose the target mode and assign its required references, or start from Alignment Demo for the prepared Pre-Scan workflow.
 
 | Target format | Recommended use | Target data | Main tradeoff |
 | --- | --- | --- | --- |
@@ -344,10 +344,10 @@ Tune these parameters first:
 - `Voxel Size Teaser`: larger values improve robustness and speed at the cost of detail.
 - `Noise Bound Teaser`: increase this for noisier extracted points.
 - `Normal Radius Teaser` and `FPFH Radius Teaser`: set these relative to the physical scene scale.
-- `Estimate Scaling`: off by default in new components and Alignment Demo. Leave it off for correctly scaled metric input; enable it for non-metric input to estimate the residual scale difference.
+- `Estimate Scaling`: disabled by default. Keep it disabled for metric-scale input; enable it for non-metric input to estimate the residual scale difference.
 - `Coarse Scale Alignment`: checked by default, but only active when `Estimate Scaling` is enabled. Estimates an initial size ratio from each cloud's 90th-percentile radius about its approximate geometric median, then scales the source points before feature matching. TEASER++ estimates the remaining scale difference. Use this for complete clouds with high overlap; uncheck it for partial scans or substantially different coverage and prepare the source near metric scale manually.
 - Coarse scaling runs before the first applied registration in a scene session. Later **Y** realignments refine the current source pose through TEASER++/GICP. Restart the scene to initialize coarse scale again.
-- `Coarse Scale Sample (%)`: percentage of each cloud used for the estimate. New components default to 5%; Alignment Demo uses 20%. The range is 0.1–100%, with 100% using all points. Sampling uses a fixed seed and index strata. Higher percentages reduce sampling variation at greater CPU and memory cost; different coverage or point densities can still bias the size ratio.
+- `Coarse Scale Sample (%)`: percentage of each cloud used for the estimate. Default: 5%; Alignment Demo preset: 20%. The range is 0.1–100%, with 100% using all points. Sampling uses a fixed seed and index strata. Higher percentages reduce sampling variation at greater CPU and memory cost; different coverage or point densities can still bias the size ratio.
 
 Coarse preparation runs on a CPU worker using the existing input buffer. Logs show the coarse, residual, and combined scales, the transformation matrix, and preparation time. Invalid scale or matrix data stops the coarse-scaling path before applying a transform. A finite native candidate is applied even when native convergence is false, and saved when saving is enabled; inspect the resulting pose and use **Y** to refine it.
 
